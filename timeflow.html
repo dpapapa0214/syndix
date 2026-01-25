@@ -57,9 +57,6 @@
             z-index: 0;
         }
     </style>
-    <!-- 動的にFaviconを設定するためのプレースホルダー -->
-    <link rel="icon" type="image/png" href="" id="dynamic-favicon">
-    <link rel="apple-touch-icon" href="" id="dynamic-apple-icon">
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden bg-pattern">
 
@@ -119,11 +116,19 @@
                     <i data-lucide="wand-2" class="w-4 h-4"></i>
                     <span class="hidden sm:inline">一括登録</span>
                 </button>
-                <!-- アイコンダウンロードボタン -->
-                <button onclick="downloadAppIcon()" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="アプリアイコンを保存">
-                    <i data-lucide="download" class="w-5 h-5"></i>
+                
+                <div class="w-px h-8 bg-slate-200 mx-1"></div>
+
+                <!-- インポート/エクスポート -->
+                <button onclick="exportData()" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="データを保存 (エクスポート)">
+                    <i data-lucide="download-cloud" class="w-5 h-5"></i>
                 </button>
-                <button onclick="clearCurrentMonth()" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="クリア">
+                <button onclick="triggerImport()" class="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="データを読み込み (インポート)">
+                    <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                </button>
+                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(this)">
+
+                <button onclick="clearCurrentMonth()" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="今月のデータを削除">
                     <i data-lucide="trash-2" class="w-5 h-5"></i>
                 </button>
             </div>
@@ -251,6 +256,19 @@
             </div>
             
             <div class="p-6 space-y-6">
+                <!-- 期間設定 -->
+                <div class="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <i data-lucide="calendar-range" class="w-3 h-3"></i> 期間設定
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input type="date" id="bulkStartDate" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                        <span class="text-slate-400">～</span>
+                        <input type="date" id="bulkEndDate" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                    </div>
+                    <p class="text-[10px] text-slate-400 text-right">※デフォルトは表示中の月</p>
+                </div>
+
                 <div class="grid grid-cols-2 gap-5">
                     <div class="space-y-1.5">
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">対象の時限</label>
@@ -386,41 +404,63 @@
             
             setupColorPickers();
             setupBulkSelectors();
-            setupAppIcon();
+            // setupAppIcon(); // 削除
         });
 
-        // --- アイコン機能 (省略せず保持) ---
-        function setupAppIcon() {
-            const iconDataUrl = generateIconDataURL();
-            document.getElementById('dynamic-favicon').href = iconDataUrl;
-            document.getElementById('dynamic-apple-icon').href = iconDataUrl;
-        }
-        function generateIconDataURL() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512;
-            canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-            const gradient = ctx.createLinearGradient(0, 0, 512, 512);
-            gradient.addColorStop(0, '#4f46e5'); gradient.addColorStop(1, '#7c3aed');
-            ctx.fillStyle = gradient;
-            ctx.beginPath();
-            const r = 100, x = 0, y = 0, w = 512, h = 512;
-            ctx.beginPath(); ctx.moveTo(x+r, y); ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r); ctx.arcTo(x, y+h, x, y, r); ctx.arcTo(x, y, x+w, y, r); ctx.closePath(); ctx.fill();
-            ctx.translate(256, 256);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'; ctx.beginPath(); ctx.roundRect(-150, -150, 300, 300, 40); ctx.fill();
-            ctx.fillStyle = 'white'; ctx.font = 'bold 240px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TF', 0, 20);
-            ctx.font = 'bold 40px sans-serif'; ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; ctx.fillText('TimeFlow', 0, 220);
-            return canvas.toDataURL('image/png');
-        }
-        function downloadAppIcon() {
-            const iconDataUrl = generateIconDataURL();
+        // --- インポート・エクスポート機能 ---
+        function exportData() {
+            const data = {
+                schedule: schedule,
+                timeSettings: timeSettings,
+                exportDate: new Date().toISOString(),
+                version: "2.0"
+            };
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            
             const a = document.createElement('a');
-            a.href = iconDataUrl;
-            a.download = 'timeflow-icon.png';
+            a.href = url;
+            a.download = `timeflow_backup_${new Date().toISOString().slice(0,10)}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
+
+        function triggerImport() {
+            document.getElementById('importFile').click();
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.schedule && data.timeSettings) {
+                        schedule = data.schedule;
+                        timeSettings = data.timeSettings;
+                        saveData();
+                        saveTimeSettingsData();
+                        renderApp();
+                        alert('データを復元しました。');
+                    } else {
+                        alert('無効なデータ形式です。');
+                    }
+                } catch (err) {
+                    alert('ファイルの読み込みに失敗しました。');
+                    console.error(err);
+                }
+                // inputをリセット
+                input.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        // --- アイコン機能削除済み ---
 
         // --- データ操作 ---
         function loadData() {
@@ -957,6 +997,16 @@
             document.getElementById('bulkRoom').value = '';
             selectBulkColor(0);
             toggleSpecificDay(); 
+
+            // 期間のデフォルト設定（現在表示中の月の初日〜末日）
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            const lastDay = new Date(year, month, 0).getDate();
+            
+            const toDateStr = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            document.getElementById('bulkStartDate').value = toDateStr(year, month, 1);
+            document.getElementById('bulkEndDate').value = toDateStr(year, month, lastDay);
+
             openModalAnimation('bulkModal', 'bulkModalContent');
         }
 
@@ -992,24 +1042,49 @@
             const room = document.getElementById('bulkRoom').value;
             const targetPeriod = parseInt(document.getElementById('bulkPeriod').value);
             const rule = document.getElementById('bulkRule').value;
-            const daysInMonth = getDaysInMonth(currentDate);
+            
+            // 期間の取得
+            const startDateVal = document.getElementById('bulkStartDate').value;
+            const endDateVal = document.getElementById('bulkEndDate').value;
+            if (!startDateVal || !endDateVal) {
+                alert('期間を設定してください');
+                return;
+            }
+
+            const startDate = new Date(startDateVal);
+            const endDate = new Date(endDateVal);
+            if (startDate > endDate) {
+                alert('開始日は終了日より前の日付にしてください');
+                return;
+            }
+
             let count = 0;
-            daysInMonth.forEach(dayObj => {
+            // 開始日から終了日までループ
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                 let shouldUpdate = false;
-                const d = dayObj.date;
+                const dayNum = d.getDate();
+                const dayIndex = d.getDay();
+
                 switch (rule) {
                     case 'everyday': shouldUpdate = true; break;
-                    case 'even': if (d % 2 === 0) shouldUpdate = true; break;
-                    case 'odd': if (d % 2 !== 0) shouldUpdate = true; break;
-                    case 'multiple3': if (d % 3 === 0) shouldUpdate = true; break;
-                    case 'specificDay': if (dayObj.dayIndex === bulkSelectedDay) shouldUpdate = true; break;
+                    case 'even': if (dayNum % 2 === 0) shouldUpdate = true; break;
+                    case 'odd': if (dayNum % 2 !== 0) shouldUpdate = true; break;
+                    case 'multiple3': if (dayNum % 3 === 0) shouldUpdate = true; break;
+                    case 'specificDay': if (dayIndex === bulkSelectedDay) shouldUpdate = true; break;
                 }
+
                 if (shouldUpdate) {
-                    const key = `${dayObj.fullDateKey}-${targetPeriod}`;
+                    // キー生成 (YYYY-MM-DD-period)
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const key = `${y}-${m}-${day}-${targetPeriod}`;
+                    
                     schedule[key] = { subject, room, color: bulkColorIndex };
                     count++;
                 }
-            });
+            }
+
             saveData();
             closeModal('bulkModal');
             if(currentView === 'today') renderTodayView();
