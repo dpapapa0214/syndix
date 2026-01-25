@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeFlow - 月間時間割</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #f1f5f9; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* グリッドレイアウトの基本設定 */
+        .timetable-grid {
+            display: grid;
+            /* JSで動的に列幅を設定しますが、フォールバックとして設定 */
+            grid-template-columns: 80px repeat(13, minmax(140px, 1fr));
+        }
+        
+        /* アニメーション */
+        .modal-enter { animation: modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes modalPop {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 背景パターン */
+        .bg-pattern {
+            background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col overflow-hidden bg-pattern">
+
+    <!-- ヘッダー (Glassmorphism) -->
+    <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-sm">
+        <div class="max-w-[1920px] mx-auto px-4 sm:px-6 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+            
+            <!-- ロゴエリア -->
+            <div class="flex items-center gap-3 select-none">
+                <div class="bg-gradient-to-br from-indigo-600 to-violet-600 p-2.5 rounded-xl text-white shadow-indigo-200 shadow-lg">
+                    <i data-lucide="calendar-clock" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 tracking-tight">TimeFlow</h1>
+                    <p class="text-[10px] text-slate-500 font-medium tracking-wider uppercase">Smart Timetable</p>
+                </div>
+            </div>
+
+            <!-- コントロールエリア -->
+            <div class="flex items-center bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200 shadow-inner gap-2">
+                <button onclick="changeMonth(-1)" class="p-2 hover:bg-white text-slate-500 hover:text-slate-800 rounded-xl shadow-sm transition-all duration-200 active:scale-95">
+                    <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                </button>
+                <div id="currentMonthDisplay" class="font-bold text-lg min-w-[140px] text-center tabular-nums text-slate-700">
+                    <!-- JS -->
+                </div>
+                <button onclick="changeMonth(1)" class="p-2 hover:bg-white text-slate-500 hover:text-slate-800 rounded-xl shadow-sm transition-all duration-200 active:scale-95">
+                    <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- アクションボタン群 -->
+            <div class="flex gap-3">
+                <button onclick="openTimeSettingModal()" class="flex items-center gap-2 text-sm font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 px-4 py-2.5 rounded-xl transition-all shadow-sm">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                    <span class="hidden lg:inline">時間設定</span>
+                </button>
+                <button onclick="openBulkModal()" class="flex items-center gap-2 text-sm font-semibold text-white bg-slate-800 hover:bg-slate-700 px-4 py-2.5 rounded-xl transition-all shadow-lg shadow-slate-200 hover:shadow-slate-300 transform active:scale-95">
+                    <i data-lucide="wand-2" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">一括登録</span>
+                </button>
+                <button onclick="clearCurrentMonth()" class="p-2.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors" title="クリア">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-1 overflow-hidden relative">
+        <div class="h-full overflow-auto" id="mainScrollContainer">
+            <!-- グリッドラッパー -->
+            <div class="min-w-max p-6 pb-32">
+                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
+                    
+                    <!-- テーブルヘッダー -->
+                    <div id="gridHeader" class="sticky top-0 z-10 timetable-grid bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
+                        <!-- JSで描画 -->
+                    </div>
+
+                    <!-- テーブルボディ -->
+                    <div id="gridBody" class="divide-y divide-slate-100">
+                        <!-- JSで描画 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- オーバーレイ (共通) -->
+    <div id="overlay" class="hidden fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-[2px] transition-opacity duration-300 opacity-0" aria-hidden="true"></div>
+
+    <!-- 編集モーダル -->
+    <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm pointer-events-auto transform transition-all scale-95 opacity-0 border border-slate-100" id="editModalContent">
+            
+            <!-- ヘッダー -->
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-3xl">
+                <div>
+                    <h3 id="modalTitle" class="font-bold text-lg text-slate-800">授業編集</h3>
+                    <p id="modalSubtitle" class="text-xs text-slate-500 font-medium mt-0.5">詳細を入力してください</p>
+                </div>
+                <button onclick="closeModal('editModal')" class="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- ボディ -->
+            <div class="p-6 space-y-5">
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">科目名</label>
+                    <div class="relative">
+                        <i data-lucide="book-open" class="absolute left-3 top-3 w-4 h-4 text-slate-400"></i>
+                        <input id="inputSubject" class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300" placeholder="例: 数学II">
+                    </div>
+                </div>
+                
+                <div class="space-y-1.5">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">教室 / メモ</label>
+                    <div class="relative">
+                        <i data-lucide="map-pin" class="absolute left-3 top-3 w-4 h-4 text-slate-400"></i>
+                        <input id="inputRoom" class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all placeholder:text-slate-300" placeholder="例: 3-A">
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">カラーラベル</label>
+                    <div id="colorPicker" class="flex flex-wrap gap-2.5">
+                        <!-- JSで描画 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- フッター -->
+            <div class="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex justify-between rounded-b-3xl">
+                <button onclick="deleteCell()" class="text-red-500 hover:text-red-600 hover:bg-red-50 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> 削除
+                </button>
+                <button onclick="saveCell()" class="bg-slate-800 text-white hover:bg-slate-700 px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-slate-200 hover:shadow-slate-300 transition-all transform active:scale-95 flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 一括登録モーダル -->
+    <div id="bulkModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md pointer-events-auto transform transition-all scale-95 opacity-0 border border-slate-100" id="bulkModalContent">
+            <div class="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center rounded-t-3xl">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
+                        <i data-lucide="wand-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg text-slate-800">一括自動登録</h3>
+                        <p class="text-xs text-slate-500">条件を指定してまとめて入力します</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('bulkModal')" class="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-2 gap-5">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">対象の時限</label>
+                        <div class="relative">
+                            <select id="bulkPeriod" class="w-full appearance-none pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none cursor-pointer">
+                                <!-- JS -->
+                            </select>
+                            <i data-lucide="chevron-down" class="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">適用ルール</label>
+                        <div class="relative">
+                            <select id="bulkRule" onchange="toggleSpecificDay()" class="w-full appearance-none pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none cursor-pointer">
+                                <option value="everyday">毎日</option>
+                                <option value="even">偶数日 (2,4...)</option>
+                                <option value="odd">奇数日 (1,3...)</option>
+                                <option value="multiple3">3の倍数日</option>
+                                <option value="specificDay">特定の曜日</option>
+                            </select>
+                            <i data-lucide="chevron-down" class="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="specificDaySelector" class="hidden bg-slate-50 p-4 rounded-2xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">曜日を選択</label>
+                    <div class="flex justify-between" id="bulkDayButtons">
+                        <!-- JS -->
+                    </div>
+                </div>
+
+                <div class="space-y-4 pt-2">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">科目名</label>
+                        <input id="bulkSubject" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300" placeholder="例: 英語表現">
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">教室</label>
+                        <input id="bulkRoom" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300" placeholder="例: LL教室">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">カラーラベル</label>
+                        <div id="bulkColorPicker" class="flex flex-wrap gap-2.5">
+                            <!-- JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl">
+                <button onclick="closeModal('bulkModal')" class="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">キャンセル</button>
+                <button onclick="applyBulkRule()" class="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all transform active:scale-95 flex items-center gap-2">
+                    <i data-lucide="zap" class="w-4 h-4"></i> 実行
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 時間設定モーダル -->
+    <div id="timeSettingModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md pointer-events-auto transform transition-all scale-95 opacity-0 border border-slate-100 flex flex-col max-h-[85vh]" id="timeSettingModalContent">
+            <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center rounded-t-3xl flex-none">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="clock" class="w-5 h-5 text-slate-500"></i>
+                    <h3 class="font-bold text-lg text-slate-800">時間割設定</h3>
+                </div>
+                <button onclick="closeModal('timeSettingModal')" class="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                <div id="timeInputsContainer" class="space-y-3">
+                    <!-- JS -->
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex justify-end gap-3 rounded-b-3xl flex-none">
+                 <button onclick="closeModal('timeSettingModal')" class="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">キャンセル</button>
+                <button onclick="saveTimeSettings()" class="bg-slate-800 text-white hover:bg-slate-700 px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-slate-200 hover:shadow-slate-300 transition-all active:scale-95">設定を保存</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // --- 設定・定数 ---
+        // 0限から12限まで (0, 1, ..., 12)
+        const periods = [0, ...Array.from({length: 12}, (_, i) => i + 1)];
+
+        // カラーパレット (Tailwind classes) - モダンで淡い色合いに更新
+        const colors = [
+            { name: 'スレート', value: 'bg-slate-100', text: 'text-slate-700', hover: 'hover:bg-slate-200', border: 'border-slate-200', ring: 'ring-slate-300' },
+            { name: 'ローズ',   value: 'bg-rose-100',   text: 'text-rose-800',   hover: 'hover:bg-rose-200',   border: 'border-rose-200',   ring: 'ring-rose-300' },
+            { name: 'オレンジ', value: 'bg-orange-100', text: 'text-orange-800', hover: 'hover:bg-orange-200', border: 'border-orange-200', ring: 'ring-orange-300' },
+            { name: 'アンバー', value: 'bg-amber-100',  text: 'text-amber-800',  hover: 'hover:bg-amber-200',  border: 'border-amber-200',  ring: 'ring-amber-300' },
+            { name: 'エメラルド', value: 'bg-emerald-100', text: 'text-emerald-800', hover: 'hover:bg-emerald-200', border: 'border-emerald-200', ring: 'ring-emerald-300' },
+            { name: 'シアン',   value: 'bg-cyan-100',   text: 'text-cyan-800',   hover: 'hover:bg-cyan-200',   border: 'border-cyan-200',   ring: 'ring-cyan-300' },
+            { name: 'インディゴ', value: 'bg-indigo-100', text: 'text-indigo-800', hover: 'hover:bg-indigo-200', border: 'border-indigo-200', ring: 'ring-indigo-300' },
+            { name: 'バイオレット', value: 'bg-violet-100', text: 'text-violet-800', hover: 'hover:bg-violet-200', border: 'border-violet-200', ring: 'ring-violet-300' },
+            { name: 'フクシア', value: 'bg-fuchsia-100', text: 'text-fuchsia-800', hover: 'hover:bg-fuchsia-200', border: 'border-fuchsia-200', ring: 'ring-fuchsia-300' },
+        ];
+
+        // デフォルトの時間設定
+        const defaultTimeSettings = {
+            0: { start: '', end: '' }, // 追加
+            1: { start: '09:00', end: '10:30' },
+            2: { start: '10:40', end: '12:10' },
+            3: { start: '13:00', end: '14:30' },
+            4: { start: '14:40', end: '16:10' },
+            5: { start: '16:20', end: '17:50' },
+            6: { start: '18:00', end: '19:30' },
+            7: { start: '19:40', end: '21:10' },
+            8: { start: '21:20', end: '22:50' },
+            9: { start: '', end: '' },
+            10: { start: '', end: '' },
+            11: { start: '', end: '' }, // 追加
+            12: { start: '', end: '' }, // 追加
+        };
+
+        // --- 状態変数 ---
+        let currentDate = new Date();
+        let schedule = {}; 
+        let timeSettings = { ...defaultTimeSettings };
+
+        let selectedCell = null;
+        let selectedColorIndex = 0;
+        let bulkColorIndex = 0;
+        let bulkSelectedDay = 1;
+
+        // --- 初期化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            renderApp();
+            
+            setupColorPickers();
+            setupBulkSelectors();
+        });
+
+        // --- データ操作 ---
+        function loadData() {
+            const savedSchedule = localStorage.getItem('timetable-calendar-data-v2');
+            // 旧バージョンからの移行も考慮（キー名が同じならそのままだが今回はv2へ）
+            if (savedSchedule) {
+                schedule = JSON.parse(savedSchedule);
+            } else {
+                // v1データがあれば読み込む
+                const oldData = localStorage.getItem('timetable-calendar-data');
+                if (oldData) schedule = JSON.parse(oldData);
+            }
+
+            const savedTimes = localStorage.getItem('timetable-time-settings-v2');
+            if (savedTimes) {
+                timeSettings = JSON.parse(savedTimes);
+            } else {
+                // v1データ
+                const oldTimes = localStorage.getItem('timetable-time-settings');
+                if (oldTimes) timeSettings = { ...defaultTimeSettings, ...JSON.parse(oldTimes) };
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('timetable-calendar-data-v2', JSON.stringify(schedule));
+        }
+
+        function saveTimeSettingsData() {
+            localStorage.setItem('timetable-time-settings-v2', JSON.stringify(timeSettings));
+        }
+
+        // --- レンダリング ---
+        function renderApp() {
+            renderHeader();
+            renderGrid();
+            lucide.createIcons();
+        }
+
+        function renderHeader() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            document.getElementById('currentMonthDisplay').textContent = `${year}.${String(month).padStart(2, '0')}`;
+        }
+
+        function renderGrid() {
+            const gridHeader = document.getElementById('gridHeader');
+            const gridBody = document.getElementById('gridBody');
+            
+            // 列定義を更新 (80px + (140px * Periods))
+            const gridTemplate = `grid-template-columns: 80px repeat(${periods.length}, minmax(140px, 1fr))`;
+            gridHeader.style = gridTemplate;
+            // gridBody内の各行もこのスタイルを適用する必要がある
+
+            // ヘッダー生成
+            let headerHTML = `<div class="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center border-r border-slate-200 flex items-center justify-center bg-slate-50/50">Date</div>`;
+            
+            periods.forEach(p => {
+                const time = timeSettings[p] || { start: '--:--', end: '--:--' };
+                headerHTML += `
+                    <div class="p-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col justify-center min-h-[60px] group transition-colors hover:bg-slate-100/50">
+                        <span class="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">${p} <span class="text-xs font-normal text-slate-400">PERIOD</span></span>
+                        <span class="text-[10px] font-mono text-slate-400 mt-1 bg-slate-100 px-2 py-0.5 rounded-full mx-auto group-hover:bg-white group-hover:shadow-sm transition-all">${time.start || '--:--'} - ${time.end || '--:--'}</span>
+                    </div>
+                `;
+            });
+            gridHeader.innerHTML = headerHTML;
+
+            // ボディ生成
+            const daysInMonth = getDaysInMonth(currentDate);
+            let bodyHTML = '';
+
+            daysInMonth.forEach(dayObj => {
+                const isToday = isDateToday(dayObj);
+                const isWeekend = dayObj.dayIndex === 0 || dayObj.dayIndex === 6;
+                const isSun = dayObj.dayIndex === 0;
+                const isSat = dayObj.dayIndex === 6;
+                
+                // 日付セル
+                const dateBg = isToday ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
+                             : isSun ? 'bg-rose-50 text-rose-600' 
+                             : isSat ? 'bg-blue-50 text-blue-600' 
+                             : 'text-slate-500';
+
+                const rowBg = isToday ? 'bg-indigo-50/10' : '';
+
+                bodyHTML += `
+                    <div class="timetable-grid hover:bg-slate-50 transition-colors ${rowBg}" style="${gridTemplate}">
+                        <div class="p-3 border-r border-slate-100 flex flex-col justify-center items-center">
+                            <div class="w-10 h-10 rounded-xl flex flex-col items-center justify-center ${dateBg} transition-all">
+                                <span class="text-lg font-bold leading-none mb-0.5">${dayObj.date}</span>
+                                <span class="text-[9px] font-bold uppercase leading-none opacity-80">${dayObj.dayEn}</span>
+                            </div>
+                        </div>
+                `;
+
+                // 時限セル
+                periods.forEach(period => {
+                    const key = `${dayObj.fullDateKey}-${period}`;
+                    const cell = schedule[key] || { subject: '', room: '', color: 0 };
+                    const colorStyle = colors[cell.color];
+                    
+                    const hasData = !!cell.subject;
+                    const cellInnerClass = hasData 
+                        ? `${colorStyle.value} ${colorStyle.text} border ${colorStyle.border} shadow-sm` 
+                        : `border border-dashed border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-slate-300`;
+
+                    // セルの内容
+                    let content = '';
+                    if (hasData) {
+                        content = `
+                            <div class="h-full flex flex-col justify-between">
+                                <div class="font-bold text-sm leading-tight line-clamp-2">${escapeHtml(cell.subject)}</div>
+                                ${cell.room ? `
+                                    <div class="flex items-center gap-1 mt-1 text-[10px] opacity-80 font-medium">
+                                        <i data-lucide="map-pin" class="w-3 h-3"></i>
+                                        <span class="truncate">${escapeHtml(cell.room)}</span>
+                                    </div>` : ''}
+                            </div>
+                            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="pencil" class="w-3 h-3"></i>
+                            </div>
+                        `;
+                    } else {
+                        content = `
+                            <div class="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <i data-lucide="plus" class="w-5 h-5 text-indigo-400"></i>
+                            </div>
+                        `;
+                    }
+
+                    const dateStr = dayObj.fullDateKey;
+                    const dayDisplay = `${dayObj.date}日 (${dayObj.day})`;
+                    
+                    bodyHTML += `
+                        <div class="p-2 border-r border-slate-100 last:border-r-0 h-24 relative group cursor-pointer"
+                             onclick="openEditModal('${key}', '${dateStr}', '${dayDisplay}', ${period})">
+                            <div class="w-full h-full rounded-xl p-2.5 transition-all duration-200 ${cellInnerClass}">
+                                ${content}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                bodyHTML += `</div>`;
+            });
+
+            gridBody.innerHTML = bodyHTML;
+        }
+
+        // --- ユーティリティ ---
+        function getDaysInMonth(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const days = [];
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+            const dayNamesEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const d = new Date(year, month, i);
+                days.push({
+                    date: i,
+                    day: dayNames[d.getDay()],
+                    dayEn: dayNamesEn[d.getDay()],
+                    dayIndex: d.getDay(),
+                    fullDateKey: `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`
+                });
+            }
+            return days;
+        }
+
+        function isDateToday(dayObj) {
+            const today = new Date();
+            return today.getDate() === dayObj.date && 
+                   today.getMonth() === currentDate.getMonth() && 
+                   today.getFullYear() === currentDate.getFullYear();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderApp();
+        }
+
+        function clearCurrentMonth() {
+            if (confirm(`${currentDate.getMonth() + 1}月のデータを全て削除しますか？\nこの操作は取り消せません。`)) {
+                const days = getDaysInMonth(currentDate);
+                days.forEach(day => {
+                    periods.forEach(p => {
+                        delete schedule[`${day.fullDateKey}-${p}`];
+                    });
+                });
+                saveData();
+                renderApp();
+            }
+        }
+
+        // --- モーダル共通処理 ---
+        function showOverlay() {
+            const overlay = document.getElementById('overlay');
+            overlay.classList.remove('hidden');
+            // reflow
+            void overlay.offsetWidth; 
+            overlay.classList.add('opacity-100');
+        }
+
+        function hideOverlay() {
+            const overlay = document.getElementById('overlay');
+            overlay.classList.remove('opacity-100');
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+            }, 300);
+        }
+
+        function openModalAnimation(modalId, contentId) {
+            showOverlay();
+            const modal = document.getElementById(modalId);
+            const content = document.getElementById(contentId);
+            
+            modal.classList.remove('hidden');
+            // reflow
+            void content.offsetWidth;
+            
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }
+
+        function closeModal(modalId) {
+            hideOverlay();
+            const modal = document.getElementById(modalId);
+            const content = modal.querySelector('div[id$="Content"]'); // idがContentで終わる要素を取得
+
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        // --- 編集モーダル ---
+        function openEditModal(key, dateStr, dayDisplay, period) {
+            const cell = schedule[key] || { subject: '', room: '', color: 0 };
+            selectedCell = { key, dateStr, dayDisplay, period };
+            
+            document.getElementById('modalTitle').textContent = `${dayDisplay} - ${period}限`;
+            document.getElementById('modalSubtitle').textContent = schedule[key] ? '内容を編集します' : '新しい予定を追加';
+            
+            document.getElementById('inputSubject').value = cell.subject;
+            document.getElementById('inputRoom').value = cell.room;
+            selectColor(cell.color);
+            
+            openModalAnimation('editModal', 'editModalContent');
+            setTimeout(() => document.getElementById('inputSubject').focus(), 100);
+        }
+
+        function setupColorPickers() {
+            const container = document.getElementById('colorPicker');
+            const bulkContainer = document.getElementById('bulkColorPicker');
+            
+            const createButtons = (targetContainer, isBulk) => {
+                let html = '';
+                colors.forEach((c, index) => {
+                    html += `
+                        <button onclick="${isBulk ? 'selectBulkColor' : 'selectColor'}(${index})" 
+                            id="${isBulk ? 'bulk-color-' : 'color-'}${index}"
+                            class="w-8 h-8 rounded-full border-2 transition-all duration-200 focus:outline-none ${c.value} border-transparent hover:scale-110"
+                            title="${c.name}">
+                            <div class="w-full h-full rounded-full flex items-center justify-center opacity-0 transition-opacity check-icon">
+                                <i data-lucide="check" class="w-4 h-4 ${c.text}"></i>
+                            </div>
+                        </button>
+                    `;
+                });
+                targetContainer.innerHTML = html;
+            };
+
+            createButtons(container, false);
+            createButtons(bulkContainer, true);
+        }
+
+        function selectColor(index) {
+            selectedColorIndex = index;
+            updateColorSelection('color-', index);
+        }
+        
+        function selectBulkColor(index) {
+            bulkColorIndex = index;
+            updateColorSelection('bulk-color-', index);
+        }
+
+        function updateColorSelection(prefix, selectedIndex) {
+            colors.forEach((c, i) => {
+                const btn = document.getElementById(prefix + i);
+                const check = btn.querySelector('.check-icon');
+                
+                if (i === selectedIndex) {
+                    btn.classList.add('scale-110', c.ring, 'ring-2', 'ring-offset-2');
+                    btn.classList.remove('border-transparent');
+                    check.classList.remove('opacity-0');
+                } else {
+                    btn.classList.remove('scale-110', c.ring, 'ring-2', 'ring-offset-2');
+                    btn.classList.add('border-transparent');
+                    check.classList.add('opacity-0');
+                }
+            });
+        }
+
+        function saveCell() {
+            if (!selectedCell) return;
+            const subject = document.getElementById('inputSubject').value;
+            const room = document.getElementById('inputRoom').value;
+            
+            if (subject) {
+                schedule[selectedCell.key] = {
+                    subject,
+                    room,
+                    color: selectedColorIndex
+                };
+            } else {
+                delete schedule[selectedCell.key];
+            }
+            
+            saveData();
+            closeModal('editModal');
+            renderApp();
+        }
+
+        function deleteCell() {
+            if (selectedCell) {
+                delete schedule[selectedCell.key];
+                saveData();
+                closeModal('editModal');
+                renderApp();
+            }
+        }
+
+        // --- 時間設定モーダル ---
+        function openTimeSettingModal() {
+            const container = document.getElementById('timeInputsContainer');
+            let html = '';
+            
+            periods.forEach(p => {
+                const time = timeSettings[p] || { start: '', end: '' };
+                html += `
+                    <div class="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
+                        <div class="font-bold text-slate-500 w-12 text-center text-sm">
+                            <span class="text-lg text-slate-800">${p}</span> 限
+                        </div>
+                        <div class="flex items-center gap-3 flex-1">
+                            <input type="time" id="time-start-${p}" value="${time.start}" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                            <span class="text-slate-300 font-bold">-</span>
+                            <input type="time" id="time-end-${p}" value="${time.end}" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+            openModalAnimation('timeSettingModal', 'timeSettingModalContent');
+        }
+
+        function saveTimeSettings() {
+            periods.forEach(p => {
+                const start = document.getElementById(`time-start-${p}`).value;
+                const end = document.getElementById(`time-end-${p}`).value;
+                timeSettings[p] = { start, end };
+            });
+            saveTimeSettingsData();
+            closeModal('timeSettingModal');
+            renderApp();
+        }
+
+        // --- 一括登録モーダル ---
+        function setupBulkSelectors() {
+            const periodSelect = document.getElementById('bulkPeriod');
+            let html = '';
+            periods.forEach(p => {
+                html += `<option value="${p}">${p}限</option>`;
+            });
+            periodSelect.innerHTML = html;
+
+            const days = ['日','月','火','水','木','金','土'];
+            const dayContainer = document.getElementById('bulkDayButtons');
+            let dayHtml = '';
+            days.forEach((d, i) => {
+                dayHtml += `
+                    <button onclick="selectBulkDay(${i})" id="bulk-day-${i}" 
+                        class="w-9 h-9 rounded-full text-xs font-bold transition-all border border-slate-200 hover:bg-slate-100 bg-white text-slate-500 flex items-center justify-center">
+                        ${d}
+                    </button>`;
+            });
+            dayContainer.innerHTML = dayHtml;
+            selectBulkDay(1); 
+        }
+
+        function openBulkModal() {
+            document.getElementById('bulkSubject').value = '';
+            document.getElementById('bulkRoom').value = '';
+            selectBulkColor(0);
+            toggleSpecificDay(); 
+            openModalAnimation('bulkModal', 'bulkModalContent');
+        }
+
+        function toggleSpecificDay() {
+            const rule = document.getElementById('bulkRule').value;
+            const selector = document.getElementById('specificDaySelector');
+            if (rule === 'specificDay') {
+                selector.classList.remove('hidden');
+            } else {
+                selector.classList.add('hidden');
+            }
+        }
+
+        function selectBulkDay(index) {
+            bulkSelectedDay = index;
+            const days = [0,1,2,3,4,5,6];
+            days.forEach(i => {
+                const btn = document.getElementById(`bulk-day-${i}`);
+                if (i === index) {
+                    btn.className = 'w-9 h-9 rounded-full text-xs font-bold transition-all bg-slate-800 text-white shadow-lg shadow-slate-300 scale-110 flex items-center justify-center';
+                } else {
+                    btn.className = 'w-9 h-9 rounded-full text-xs font-bold transition-all border border-slate-200 hover:bg-slate-100 bg-white text-slate-500 flex items-center justify-center';
+                }
+            });
+        }
+
+        function applyBulkRule() {
+            const subject = document.getElementById('bulkSubject').value;
+            if (!subject) {
+                alert('科目名を入力してください');
+                return;
+            }
+            
+            const room = document.getElementById('bulkRoom').value;
+            const targetPeriod = parseInt(document.getElementById('bulkPeriod').value);
+            const rule = document.getElementById('bulkRule').value;
+            const daysInMonth = getDaysInMonth(currentDate);
+            
+            let count = 0;
+
+            daysInMonth.forEach(dayObj => {
+                let shouldUpdate = false;
+                const d = dayObj.date;
+
+                switch (rule) {
+                    case 'everyday': shouldUpdate = true; break;
+                    case 'even': if (d % 2 === 0) shouldUpdate = true; break;
+                    case 'odd': if (d % 2 !== 0) shouldUpdate = true; break;
+                    case 'multiple3': if (d % 3 === 0) shouldUpdate = true; break;
+                    case 'specificDay': if (dayObj.dayIndex === bulkSelectedDay) shouldUpdate = true; break;
+                }
+
+                if (shouldUpdate) {
+                    const key = `${dayObj.fullDateKey}-${targetPeriod}`;
+                    schedule[key] = {
+                        subject,
+                        room,
+                        color: bulkColorIndex
+                    };
+                    count++;
+                }
+            });
+
+            saveData();
+            closeModal('bulkModal');
+            renderApp();
+            alert(`${count}件のデータを一括登録しました`);
+        }
+    </script>
+</body>
+</html>
