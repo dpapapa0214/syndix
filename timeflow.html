@@ -22,11 +22,11 @@
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 5px; border: 2px solid #f1f5f9; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
-        /* グリッドレイアウトの基本設定 */
+        /* グリッドレイアウトの基本設定（動的に書き換えられます） */
         .timetable-grid {
             display: grid;
-            /* JSで動的に列幅を設定しますが、フォールバックとして設定 */
-            grid-template-columns: 80px repeat(13, minmax(140px, 1fr));
+            /* 初期値（JSで上書きされます） */
+            grid-template-columns: 100px repeat(31, minmax(140px, 1fr));
         }
         
         /* アニメーション */
@@ -141,11 +141,11 @@
         <div id="monthViewWrapper" class="h-full overflow-auto fade-in">
             <div class="min-w-max p-6 pb-32">
                 <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
-                    <!-- テーブルヘッダー -->
-                    <div id="gridHeader" class="sticky top-0 z-10 timetable-grid bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
+                    <!-- テーブルヘッダー (日付軸) -->
+                    <div id="gridHeader" class="sticky top-0 z-20 timetable-grid bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
                         <!-- JSで描画 -->
                     </div>
-                    <!-- テーブルボディ -->
+                    <!-- テーブルボディ (時限軸) -->
                     <div id="gridBody" class="divide-y divide-slate-100">
                         <!-- JSで描画 -->
                     </div>
@@ -241,7 +241,7 @@
 
     <!-- 一括登録モーダル -->
     <div id="bulkModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md pointer-events-auto transform transition-all scale-95 opacity-0 border border-slate-100" id="bulkModalContent">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg pointer-events-auto transform transition-all scale-95 opacity-0 border border-slate-100" id="bulkModalContent">
             <div class="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white flex justify-between items-center rounded-t-3xl">
                 <div class="flex items-center gap-3">
                     <div class="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
@@ -249,13 +249,13 @@
                     </div>
                     <div>
                         <h3 class="font-bold text-lg text-slate-800">一括自動登録</h3>
-                        <p class="text-xs text-slate-500">条件を指定してまとめて入力します</p>
+                        <p class="text-xs text-slate-500">複数時限・複数曜日の一括設定が可能です</p>
                     </div>
                 </div>
                 <button onclick="closeModal('bulkModal')" class="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             
-            <div class="p-6 space-y-6">
+            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 <!-- 期間設定 -->
                 <div class="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
                     <label class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
@@ -266,17 +266,13 @@
                         <span class="text-slate-400">～</span>
                         <input type="date" id="bulkEndDate" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none">
                     </div>
-                    <p class="text-[10px] text-slate-400 text-right">※デフォルトは表示中の月</p>
                 </div>
 
-                <div class="grid grid-cols-2 gap-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">対象の時限</label>
-                        <div class="relative">
-                            <select id="bulkPeriod" class="w-full appearance-none pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 outline-none cursor-pointer">
-                                <!-- JS -->
-                            </select>
-                            <i data-lucide="chevron-down" class="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">対象の時限 (複数選択可)</label>
+                        <div id="bulkPeriodSelector" class="grid grid-cols-4 gap-2">
+                            <!-- JSで生成 -->
                         </div>
                     </div>
                     <div class="space-y-1.5">
@@ -295,20 +291,22 @@
                 </div>
 
                 <div id="specificDaySelector" class="hidden bg-slate-50 p-4 rounded-2xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
-                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">曜日を選択</label>
+                    <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 block">曜日を選択 (複数選択可)</label>
                     <div class="flex justify-between" id="bulkDayButtons">
                         <!-- JS -->
                     </div>
                 </div>
 
-                <div class="space-y-4 pt-2">
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">科目名</label>
-                        <input id="bulkSubject" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300" placeholder="例: 英語表現">
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">教室</label>
-                        <input id="bulkRoom" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300" placeholder="例: LL教室">
+                <div class="space-y-4 pt-2 border-t border-slate-100">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">科目名</label>
+                            <input id="bulkSubject" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300" placeholder="例: 英語表現">
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">教室</label>
+                            <input id="bulkRoom" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none placeholder:text-slate-300" placeholder="例: LL教室">
+                        </div>
                     </div>
                     <div class="space-y-2">
                         <label class="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">カラーラベル</label>
@@ -395,7 +393,8 @@
         let selectedCell = null;
         let selectedColorIndex = 0;
         let bulkColorIndex = 0;
-        let bulkSelectedDay = 1;
+        let bulkSelectedPeriods = new Set([1]); // デフォルト1限
+        let bulkSelectedDays = new Set([1]);    // デフォルト月曜
 
         // --- 初期化 ---
         document.addEventListener('DOMContentLoaded', () => {
@@ -404,7 +403,6 @@
             
             setupColorPickers();
             setupBulkSelectors();
-            // setupAppIcon(); // 削除
         });
 
         // --- インポート・エクスポート機能 ---
@@ -459,8 +457,6 @@
             };
             reader.readAsText(file);
         }
-
-        // --- アイコン機能削除済み ---
 
         // --- データ操作 ---
         function loadData() {
@@ -557,7 +553,6 @@
             let html = '';
             let hasClasses = false;
             
-            // 時間情報から現在時刻と比較してアクティブな授業を判定
             const now = new Date();
             const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -570,7 +565,6 @@
                     const time = timeSettings[p] || { start: '--:--', end: '--:--' };
                     const colorStyle = colors[cell.color];
                     
-                    // 時間判定
                     let isActive = false;
                     let isPast = false;
                     if (time.start && time.end) {
@@ -595,16 +589,11 @@
 
                     html += `
                         <div class="relative pl-12 sm:pl-16 py-1 group cursor-pointer" onclick="openEditModal('${key}', '${fullDateKey}', '${month}月${date}日(${dayNames[today.getDay()]})', ${p})">
-                            <!-- タイムラインのドット -->
                             <div class="absolute left-[16px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-[3px] border-white shadow-sm z-10 ${colorStyle.dot} ${dotClass}"></div>
-                            
-                            <!-- 時間表示 -->
                             <div class="absolute left-0 top-0 text-[10px] font-mono text-slate-400 font-bold -translate-x-full pr-4 text-right w-16 pt-3 sm:pt-4">
                                 <div>${time.start}</div>
                                 <div class="opacity-50">${time.end}</div>
                             </div>
-
-                            <!-- カード本体 -->
                             <div class="rounded-xl p-4 border border-slate-100 transition-all duration-300 ${cardClass}">
                                 <div class="flex justify-between items-start gap-2">
                                     <div>
@@ -650,65 +639,67 @@
         function renderGrid() {
             const gridHeader = document.getElementById('gridHeader');
             const gridBody = document.getElementById('gridBody');
+            const daysInMonth = getDaysInMonth(currentDate);
             
-            // 列定義を更新 (80px + (140px * Periods))
-            const gridTemplate = `grid-template-columns: 80px repeat(${periods.length}, minmax(140px, 1fr))`;
+            // 列定義を更新: [時限列 100px] + [日付列数 * 140px]
+            const gridTemplate = `grid-template-columns: 100px repeat(${daysInMonth.length}, minmax(140px, 1fr))`;
             gridHeader.style = gridTemplate;
 
-            // ヘッダー生成
-            let headerHTML = `<div class="p-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center border-r border-slate-200 flex items-center justify-center bg-slate-50/50">Date</div>`;
+            // ヘッダー生成 (横軸: 日付)
+            // 左上の角（時限/日付の交点）は固定
+            let headerHTML = `<div class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center border-r border-slate-200 flex items-center justify-center bg-slate-50 sticky left-0 z-20 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">Period</div>`;
             
-            periods.forEach(p => {
-                const time = timeSettings[p] || { start: '--:--', end: '--:--' };
-                headerHTML += `
-                    <div class="p-3 text-center border-r border-slate-200 last:border-r-0 flex flex-col justify-center min-h-[60px] group transition-colors hover:bg-slate-100/50">
-                        <span class="text-sm font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">${p} <span class="text-xs font-normal text-slate-400">PERIOD</span></span>
-                        <span class="text-[10px] font-mono text-slate-400 mt-1 bg-slate-100 px-2 py-0.5 rounded-full mx-auto group-hover:bg-white group-hover:shadow-sm transition-all">${time.start || '--:--'} - ${time.end || '--:--'}</span>
-                    </div>
-                `;
-            });
-            gridHeader.innerHTML = headerHTML;
-
-            // ボディ生成
-            const daysInMonth = getDaysInMonth(currentDate);
-            let bodyHTML = '';
-
             daysInMonth.forEach(dayObj => {
                 const isToday = isDateToday(dayObj);
                 const isWeekend = dayObj.dayIndex === 0 || dayObj.dayIndex === 6;
                 const isSun = dayObj.dayIndex === 0;
                 const isSat = dayObj.dayIndex === 6;
                 
-                // 日付セル
-                const dateBg = isToday ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' 
-                             : isSun ? 'bg-rose-50 text-rose-600' 
-                             : isSat ? 'bg-blue-50 text-blue-600' 
-                             : 'text-slate-500';
+                const dateColor = isToday ? 'text-indigo-600 bg-indigo-50 rounded-lg px-2 py-1' 
+                                : isSun ? 'text-rose-500' 
+                                : isSat ? 'text-blue-500' 
+                                : 'text-slate-700';
+                
+                const borderClass = isToday ? 'border-indigo-200' : 'border-slate-200';
 
-                const rowBg = isToday ? 'bg-indigo-50/10' : '';
+                headerHTML += `
+                    <div class="p-2 text-center border-r ${borderClass} last:border-r-0 flex flex-col justify-center min-h-[50px] group hover:bg-slate-50 transition-colors">
+                        <span class="text-sm font-bold ${dateColor} inline-block">${dayObj.date} <span class="text-xs font-normal opacity-75">(${dayObj.day})</span></span>
+                    </div>
+                `;
+            });
+            gridHeader.innerHTML = headerHTML;
 
+            // ボディ生成 (縦軸: 時限)
+            let bodyHTML = '';
+
+            periods.forEach(p => {
+                const time = timeSettings[p] || { start: '--:--', end: '--:--' };
+                
+                // 行コンテナ (Grid)
                 bodyHTML += `
-                    <div class="timetable-grid hover:bg-slate-50 transition-colors ${rowBg}" style="${gridTemplate}">
-                        <div class="p-3 border-r border-slate-100 flex flex-col justify-center items-center">
-                            <div class="w-10 h-10 rounded-xl flex flex-col items-center justify-center ${dateBg} transition-all">
-                                <span class="text-lg font-bold leading-none mb-0.5">${dayObj.date}</span>
-                                <span class="text-[9px] font-bold uppercase leading-none opacity-80">${dayObj.dayEn}</span>
-                            </div>
+                    <div class="timetable-grid hover:bg-slate-50/30 transition-colors border-b border-slate-100 last:border-b-0" style="${gridTemplate}">
+                        <!-- 左端: 時限ラベル (固定) -->
+                        <div class="p-3 border-r border-slate-200 flex flex-col justify-center items-center bg-white sticky left-0 z-10 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                            <span class="text-lg font-bold text-slate-800">${p}</span>
+                            <span class="text-[10px] font-mono text-slate-400 mt-1 leading-tight text-center">${time.start}<br>|<br>${time.end}</span>
                         </div>
                 `;
 
-                // 時限セル
-                periods.forEach(period => {
-                    const key = `${dayObj.fullDateKey}-${period}`;
+                // 各日付のセル
+                daysInMonth.forEach(dayObj => {
+                    const key = `${dayObj.fullDateKey}-${p}`;
                     const cell = schedule[key] || { subject: '', room: '', color: 0 };
                     const colorStyle = colors[cell.color];
-                    
                     const hasData = !!cell.subject;
+                    const isWeekend = dayObj.dayIndex === 0 || dayObj.dayIndex === 6;
+                    
                     const cellInnerClass = hasData 
                         ? `${colorStyle.value} ${colorStyle.text} border ${colorStyle.border} shadow-sm` 
                         : `border border-dashed border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/30 text-slate-300`;
 
-                    // セルの内容
+                    const bgClass = !hasData && isWeekend ? 'bg-slate-50/40' : '';
+
                     let content = '';
                     if (hasData) {
                         content = `
@@ -720,14 +711,11 @@
                                         <span class="truncate">${escapeHtml(cell.room)}</span>
                                     </div>` : ''}
                             </div>
-                            <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i data-lucide="pencil" class="w-3 h-3"></i>
-                            </div>
                         `;
                     } else {
                         content = `
                             <div class="w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                <i data-lucide="plus" class="w-5 h-5 text-indigo-400"></i>
+                                <i data-lucide="plus" class="w-4 h-4 text-indigo-300"></i>
                             </div>
                         `;
                     }
@@ -736,9 +724,9 @@
                     const dayDisplay = `${dayObj.date}日 (${dayObj.day})`;
                     
                     bodyHTML += `
-                        <div class="p-2 border-r border-slate-100 last:border-r-0 h-24 relative group cursor-pointer"
-                             onclick="openEditModal('${key}', '${dateStr}', '${dayDisplay}', ${period})">
-                            <div class="w-full h-full rounded-xl p-2.5 transition-all duration-200 ${cellInnerClass}">
+                        <div class="p-1.5 border-r border-slate-100 last:border-r-0 h-28 relative group cursor-pointer ${bgClass}"
+                             onclick="openEditModal('${key}', '${dateStr}', '${dayDisplay}', ${p})">
+                            <div class="w-full h-full rounded-lg p-2 transition-all duration-200 ${cellInnerClass}">
                                 ${content}
                             </div>
                         </div>
@@ -971,31 +959,43 @@
 
         // --- 一括登録モーダル ---
         function setupBulkSelectors() {
-            const periodSelect = document.getElementById('bulkPeriod');
-            let html = '';
+            // 時限セレクタ（複数選択）
+            const periodContainer = document.getElementById('bulkPeriodSelector');
+            let periodHtml = '';
             periods.forEach(p => {
-                html += `<option value="${p}">${p}限</option>`;
+                periodHtml += `
+                    <button onclick="toggleBulkPeriod(${p})" id="bulk-period-btn-${p}" 
+                        class="px-2 py-2 rounded-lg text-xs font-bold transition-all border border-slate-200 hover:bg-slate-50 bg-white text-slate-600 flex items-center justify-center">
+                        ${p}限
+                    </button>`;
             });
-            periodSelect.innerHTML = html;
+            periodContainer.innerHTML = periodHtml;
 
+            // 曜日セレクタ（複数選択）
             const days = ['日','月','火','水','木','金','土'];
             const dayContainer = document.getElementById('bulkDayButtons');
             let dayHtml = '';
             days.forEach((d, i) => {
                 dayHtml += `
-                    <button onclick="selectBulkDay(${i})" id="bulk-day-${i}" 
+                    <button onclick="toggleBulkDay(${i})" id="bulk-day-${i}" 
                         class="w-9 h-9 rounded-full text-xs font-bold transition-all border border-slate-200 hover:bg-slate-100 bg-white text-slate-500 flex items-center justify-center">
                         ${d}
                     </button>`;
             });
             dayContainer.innerHTML = dayHtml;
-            selectBulkDay(1); 
         }
 
         function openBulkModal() {
             document.getElementById('bulkSubject').value = '';
             document.getElementById('bulkRoom').value = '';
             selectBulkColor(0);
+            
+            // 状態リセット
+            bulkSelectedPeriods = new Set([1]); // デフォルト1限
+            bulkSelectedDays = new Set([1]);    // デフォルト月曜
+            updateBulkPeriodUI();
+            updateBulkDayUI();
+
             toggleSpecificDay(); 
 
             // 期間のデフォルト設定（現在表示中の月の初日〜末日）
@@ -1020,12 +1020,44 @@
             }
         }
 
-        function selectBulkDay(index) {
-            bulkSelectedDay = index;
+        function toggleBulkPeriod(period) {
+            if (bulkSelectedPeriods.has(period)) {
+                if (bulkSelectedPeriods.size > 1) { // 少なくとも1つは選択させる
+                    bulkSelectedPeriods.delete(period);
+                }
+            } else {
+                bulkSelectedPeriods.add(period);
+            }
+            updateBulkPeriodUI();
+        }
+
+        function updateBulkPeriodUI() {
+            periods.forEach(p => {
+                const btn = document.getElementById(`bulk-period-btn-${p}`);
+                if (bulkSelectedPeriods.has(p)) {
+                    btn.className = 'px-2 py-2 rounded-lg text-xs font-bold transition-all bg-slate-800 text-white shadow-md flex items-center justify-center';
+                } else {
+                    btn.className = 'px-2 py-2 rounded-lg text-xs font-bold transition-all border border-slate-200 hover:bg-slate-50 bg-white text-slate-600 flex items-center justify-center';
+                }
+            });
+        }
+
+        function toggleBulkDay(index) {
+            if (bulkSelectedDays.has(index)) {
+                if (bulkSelectedDays.size > 1) { // 少なくとも1つは選択させる
+                    bulkSelectedDays.delete(index);
+                }
+            } else {
+                bulkSelectedDays.add(index);
+            }
+            updateBulkDayUI();
+        }
+
+        function updateBulkDayUI() {
             const days = [0,1,2,3,4,5,6];
             days.forEach(i => {
                 const btn = document.getElementById(`bulk-day-${i}`);
-                if (i === index) {
+                if (bulkSelectedDays.has(i)) {
                     btn.className = 'w-9 h-9 rounded-full text-xs font-bold transition-all bg-slate-800 text-white shadow-lg shadow-slate-300 scale-110 flex items-center justify-center';
                 } else {
                     btn.className = 'w-9 h-9 rounded-full text-xs font-bold transition-all border border-slate-200 hover:bg-slate-100 bg-white text-slate-500 flex items-center justify-center';
@@ -1040,9 +1072,10 @@
                 return;
             }
             const room = document.getElementById('bulkRoom').value;
-            const targetPeriod = parseInt(document.getElementById('bulkPeriod').value);
-            const rule = document.getElementById('bulkRule').value;
             
+            const rule = document.getElementById('bulkRule').value;
+            const targetPeriods = Array.from(bulkSelectedPeriods);
+
             // 期間の取得
             const startDateVal = document.getElementById('bulkStartDate').value;
             const endDateVal = document.getElementById('bulkEndDate').value;
@@ -1070,18 +1103,20 @@
                     case 'even': if (dayNum % 2 === 0) shouldUpdate = true; break;
                     case 'odd': if (dayNum % 2 !== 0) shouldUpdate = true; break;
                     case 'multiple3': if (dayNum % 3 === 0) shouldUpdate = true; break;
-                    case 'specificDay': if (dayIndex === bulkSelectedDay) shouldUpdate = true; break;
+                    case 'specificDay': if (bulkSelectedDays.has(dayIndex)) shouldUpdate = true; break;
                 }
 
                 if (shouldUpdate) {
-                    // キー生成 (YYYY-MM-DD-period)
-                    const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    const key = `${y}-${m}-${day}-${targetPeriod}`;
-                    
-                    schedule[key] = { subject, room, color: bulkColorIndex };
-                    count++;
+                    // 選択された全ての時限に対して登録
+                    targetPeriods.forEach(p => {
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        const key = `${y}-${m}-${day}-${p}`;
+                        
+                        schedule[key] = { subject, room, color: bulkColorIndex };
+                        count++;
+                    });
                 }
             }
 
