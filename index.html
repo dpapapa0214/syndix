@@ -274,7 +274,7 @@
         <div id="app-view" class="hidden flex-col flex-grow">
             <!-- Header -->
             <header class="flex flex-col md:flex-row justify-between items-center mb-6 fade-in pt-2">
-                <div class="mb-4 md:mb-0 flex items-center gap-4">
+                <div class="mb-4 md:mb-0 flex items-center gap-4 cursor-pointer" onclick="showHome()">
                     <div>
                         <h1 class="text-2xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400">
                             Fav-Verse
@@ -299,20 +299,46 @@
                 </div>
             </header>
 
-            <!-- Genre Navigation -->
-            <nav class="mb-6 overflow-x-auto pb-2 fade-in">
-                <div id="genre-list" class="flex gap-2 min-w-max px-1">
-                    <!-- Javascript will inject genres here -->
-                </div>
-            </nav>
-
             <!-- Main Content Area -->
             <div id="main-content" class="flex-grow relative">
                 
-                <!-- GRID VIEW -->
-                <main id="items-grid" class="masonry-grid fade-in transition-opacity duration-300">
-                    <!-- Javascript will inject items here -->
-                </main>
+                <!-- HOME: GENRE GRID VIEW -->
+                <div id="genre-grid-view" class="fade-in">
+                    <h2 class="text-lg font-medium text-theme-main mb-4 border-l-4 border-[var(--accent-primary)] pl-3">ジャンル一覧</h2>
+                    <div id="genre-cards-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- Genre Cards Injected Here -->
+                    </div>
+                </div>
+
+                <!-- SUB: ITEMS LIST VIEW (Hidden by default) -->
+                <div id="items-list-view" class="hidden fade-in">
+                    <!-- List Header with Back button and Sort -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                        <div class="flex items-center gap-3">
+                            <button onclick="showHome()" class="p-2 rounded-full glass hover:bg-white/10 transition text-theme-muted hover:text-white">
+                                <i data-feather="arrow-left" class="w-5 h-5"></i>
+                            </button>
+                            <h2 id="current-genre-title" class="text-2xl font-bold text-theme-main">Genre Name</h2>
+                            <span id="current-genre-count" class="px-2 py-0.5 bg-[var(--glass-highlight)] rounded-full text-xs text-theme-main">0</span>
+                        </div>
+                        
+                        <!-- Sort Control -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-theme-muted uppercase tracking-wider">Sort by</span>
+                            <select id="sort-select" onchange="changeSort(this.value)" class="custom-input px-3 py-1.5 rounded-lg text-xs appearance-none cursor-pointer hover:border-blue-400 transition">
+                                <option value="date_desc">追加順 (新しい順)</option>
+                                <option value="date_asc">追加順 (古い順)</option>
+                                <option value="rating_desc">評価順 (高い順)</option>
+                                <option value="name_asc">名前順 (A-Z)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Items Grid -->
+                    <main id="items-grid" class="masonry-grid transition-opacity duration-300">
+                        <!-- Items injected here -->
+                    </main>
+                </div>
 
                 <!-- DETAIL VIEW (Overlay) -->
                 <div id="detail-view" class="hidden absolute inset-0 z-20 fade-in-right bg-[var(--modal-bg)] backdrop-blur-md rounded-xl overflow-hidden flex flex-col lg:flex-row h-full border border-[var(--glass-border)] shadow-2xl">
@@ -329,8 +355,10 @@
                     <!-- Info Section -->
                     <div class="w-full lg:w-1/2 p-6 lg:p-10 flex flex-col overflow-y-auto">
                         <div class="flex items-center justify-between mb-2 mt-8 lg:mt-0">
-                            <span id="detail-genre" class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">Genre</span>
-                            <span id="detail-date" class="text-theme-muted font-mono text-xs">Date</span>
+                            <div class="flex items-center gap-2">
+                                <span id="detail-genre" class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">Genre</span>
+                                <span id="detail-date" class="text-theme-muted font-mono text-xs">Date</span>
+                            </div>
                         </div>
 
                         <h2 id="detail-name" class="text-2xl md:text-4xl font-bold text-theme-main mb-4 leading-tight">Title</h2>
@@ -347,10 +375,14 @@
                             <p id="detail-desc" class="text-theme-main text-sm md:text-base leading-relaxed whitespace-pre-wrap">Description text...</p>
                         </div>
 
-                        <div class="mt-8 pt-6 border-t border-[var(--glass-border)] flex justify-end">
-                            <button id="detail-delete-btn" class="flex items-center gap-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 px-4 py-2 rounded-lg transition text-sm">
+                        <div class="mt-8 pt-6 border-t border-[var(--glass-border)] flex justify-end gap-3">
+                            <button id="detail-edit-btn" class="flex items-center gap-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 px-4 py-2 rounded-lg transition text-sm font-medium">
+                                <i data-feather="edit-2" class="w-4 h-4"></i>
+                                <span>編集</span>
+                            </button>
+                            <button id="detail-delete-btn" class="flex items-center gap-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 px-4 py-2 rounded-lg transition text-sm font-medium">
                                 <i data-feather="trash-2" class="w-4 h-4"></i>
-                                <span>この記録を削除</span>
+                                <span>削除</span>
                             </button>
                         </div>
                     </div>
@@ -366,16 +398,16 @@
     </div>
 
     <!-- Modals -->
-    <!-- Add Item Modal -->
+    <!-- Add/Edit Item Modal -->
     <div id="item-modal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeItemModal()"></div>
         <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-lg p-4">
             <div class="modal-content rounded-2xl p-6 border border-[var(--glass-border)] shadow-2xl relative">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold text-theme-main">記録を追加</h2>
+                    <h2 id="modal-title" class="text-lg font-bold text-theme-main">記録を追加</h2>
                     <button onclick="closeItemModal()" class="text-theme-muted hover:text-theme-main"><i data-feather="x" class="w-5 h-5"></i></button>
                 </div>
-                <form id="item-form" onsubmit="handleAddItem(event)">
+                <form id="item-form" onsubmit="handleItemSubmit(event)">
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -407,7 +439,7 @@
                             </div>
                         </div>
                     </div>
-                    <button type="submit" class="w-full mt-6 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-2.5 rounded-lg shadow-lg text-sm">追加</button>
+                    <button type="submit" id="modal-submit-btn" class="w-full mt-6 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-2.5 rounded-lg shadow-lg text-sm">追加</button>
                 </form>
             </div>
         </div>
@@ -440,9 +472,11 @@
 
         // --- Data State ---
         let appData = { genres: [], items: [] };
-        let currentGenre = '全て';
+        let currentGenre = null; 
+        let currentSort = 'date_desc'; 
         let tempImageBase64 = null;
         let currentRatingInput = 0;
+        let editingItemId = null; // ID of item being edited
 
         // --- Theme Logic ---
         function toggleTheme() {
@@ -473,8 +507,6 @@
             const sunIcon = document.querySelector('.light-mode-icon');
             const moonIcon = document.querySelector('.dark-mode-icon');
             
-            // If Light Mode is ON, show Moon (to switch to Dark)
-            // If Dark Mode is ON, show Sun (to switch to Light)
             if (isLightMode) {
                 sunIcon.classList.add('hidden');
                 moonIcon.classList.remove('hidden');
@@ -562,31 +594,85 @@
             } catch (e) { console.error("Fetch error", e); }
         }
 
+        // --- View Navigation ---
+        function showHome() {
+            currentGenre = null;
+            document.getElementById('genre-grid-view').classList.remove('hidden');
+            document.getElementById('items-list-view').classList.add('hidden');
+            renderGenres();
+        }
+
+        function showGenreItems(genreName) {
+            currentGenre = genreName;
+            document.getElementById('genre-grid-view').classList.add('hidden');
+            document.getElementById('items-list-view').classList.remove('hidden');
+            
+            // Update Header
+            document.getElementById('current-genre-title').textContent = genreName;
+            const count = appData.items.filter(i => i.genre === genreName).length;
+            document.getElementById('current-genre-count').textContent = count;
+            
+            renderItems();
+        }
+
+        function changeSort(sortType) {
+            currentSort = sortType;
+            renderItems();
+        }
+
         // --- Render Functions ---
         function render() {
-            renderGenres();
-            renderItems();
+            if (currentGenre) {
+                showGenreItems(currentGenre);
+            } else {
+                showHome();
+            }
             feather.replace();
         }
 
         function renderGenres() {
-            const container = document.getElementById('genre-list');
+            const container = document.getElementById('genre-cards-container');
             container.innerHTML = '';
-            appData.genres.forEach(genre => {
-                const btn = document.createElement('button');
-                const isActive = genre === currentGenre;
-                btn.className = `px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-300 border ${
-                    isActive ? 'genre-active scale-105' : 'genre-inactive'
-                }`;
-                btn.textContent = genre;
-                btn.onclick = () => { currentGenre = genre; render(); };
-                if (genre !== '全て') {
-                    btn.oncontextmenu = (e) => {
-                        e.preventDefault();
-                        if(confirm(`ジャンル「${genre}」を削除しますか？`)) deleteGenre(genre);
-                    };
+            
+            const displayGenres = appData.genres.filter(g => g !== '全て');
+
+            displayGenres.forEach((genre, index) => {
+                const itemsInGenre = appData.items.filter(i => i.genre === genre);
+                const count = itemsInGenre.length;
+                
+                let bgStyle = '';
+                const itemWithImage = itemsInGenre.find(i => i.image);
+
+                const card = document.createElement('div');
+                card.className = `glass-card rounded-2xl overflow-hidden relative group h-40 cursor-pointer transition-all hover:scale-[1.02]`;
+                card.onclick = () => showGenreItems(genre);
+                card.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    if(confirm(`ジャンル「${genre}」を削除しますか？`)) deleteGenre(genre);
+                };
+
+                const bgLayer = document.createElement('div');
+                bgLayer.className = "absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110 opacity-60 group-hover:opacity-40";
+                if(itemWithImage) {
+                    bgLayer.style.backgroundImage = `url('${itemWithImage.image}')`;
+                } else {
+                    bgLayer.classList.add('bg-gradient-to-br');
+                    const colors = ['from-blue-500', 'from-indigo-500', 'from-cyan-500', 'from-sky-500'];
+                    bgLayer.classList.add(colors[index % colors.length], 'to-slate-900');
                 }
-                container.appendChild(btn);
+
+                card.innerHTML = `
+                    <div class="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors"></div>
+                    ${bgLayer.outerHTML}
+                    <div class="absolute inset-0 p-6 flex flex-col justify-end z-10">
+                        <h3 class="text-2xl font-bold text-white mb-1 group-hover:translate-x-2 transition-transform">${genre}</h3>
+                        <p class="text-xs text-blue-200 font-mono group-hover:translate-x-2 transition-transform delay-75">${count} Items</p>
+                    </div>
+                    <div class="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-2 group-hover:translate-x-0">
+                        <i data-feather="chevron-right" class="text-white w-6 h-6"></i>
+                    </div>
+                `;
+                container.appendChild(card);
             });
         }
 
@@ -594,11 +680,19 @@
             const grid = document.getElementById('items-grid');
             grid.innerHTML = '';
 
-            const filteredItems = currentGenre === '全て' ? appData.items : appData.items.filter(i => i.genre === currentGenre);
-            filteredItems.sort((a, b) => b.id - a.id);
+            let filteredItems = currentGenre ? appData.items.filter(i => i.genre === currentGenre) : [];
+
+            filteredItems.sort((a, b) => {
+                switch(currentSort) {
+                    case 'date_asc': return a.id - b.id;
+                    case 'rating_desc': return (b.rating || 0) - (a.rating || 0);
+                    case 'name_asc': return a.name.localeCompare(b.name, 'ja');
+                    case 'date_desc': default: return b.id - a.id;
+                }
+            });
 
             if (filteredItems.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-20 opacity-50"><p class="text-theme-muted text-sm">No Items Found</p></div>`;
+                grid.innerHTML = `<div class="col-span-full text-center py-20 opacity-50"><p class="text-theme-muted text-sm">まだ記録がありません。</p></div>`;
                 return;
             }
 
@@ -626,10 +720,6 @@
                 card.innerHTML = `
                     ${imageHTML}
                     <div class="p-3 flex flex-col flex-grow relative">
-                        <span class="absolute -top-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur text-[9px] font-bold text-white rounded text-xs border border-white/10 z-10 truncate max-w-[80px]">
-                            ${item.genre}
-                        </span>
-                        
                         <h3 class="text-sm font-bold leading-tight text-theme-main mb-1 truncate">${item.name}</h3>
                         
                         <div class="flex gap-0.5 mb-1.5 text-yellow-400 opacity-90 star-static">${starsHTML}</div>
@@ -643,6 +733,7 @@
                 `;
                 grid.appendChild(card);
             });
+            feather.replace();
         }
 
         function generateStars(count, sizeClass) {
@@ -654,7 +745,7 @@
             return html;
         }
 
-        // --- Data Manipulation (API Wrappers) ---
+        // --- Data Manipulation ---
         async function handleAddGenre(e) {
             e.preventDefault();
             const name = document.getElementById('new-genre-name').value.trim();
@@ -668,12 +759,11 @@
             if (data.success) {
                 await fetchData();
                 closeGenreModal();
-                currentGenre = name;
                 document.getElementById('new-genre-name').value = '';
-                render();
+                showHome(); 
             }
         }
-
+        
         async function deleteGenre(name) {
              const res = await fetch(API_URL, {
                 method: 'POST', 
@@ -681,12 +771,13 @@
             });
             const data = await res.json();
             if(data.success) {
-                if (currentGenre === name) currentGenre = '全て';
                 await fetchData();
+                showHome();
             }
         }
 
-        async function handleAddItem(e) {
+        // Combined handler for Add and Update
+        async function handleItemSubmit(e) {
             e.preventDefault();
             const itemData = {
                 genre: document.getElementById('item-genre-select').value,
@@ -698,20 +789,37 @@
 
             if (itemData.rating === 0) { alert('評価を選択してください'); return; }
 
+            let action = 'add_item';
+            if (editingItemId) {
+                action = 'update_item';
+                itemData.id = editingItemId;
+            }
+
             const res = await fetch(API_URL, {
                 method: 'POST',
-                body: JSON.stringify({ action: 'add_item', token: authToken, ...itemData })
+                body: JSON.stringify({ action: action, token: authToken, ...itemData })
             });
             const data = await res.json();
             if (data.success) {
                 await fetchData();
                 closeItemModal();
                 resetForm();
+                
+                // If editing, refresh detail view
+                if (editingItemId) {
+                    openDetail(editingItemId);
+                }
+
+                if (currentGenre && currentGenre === itemData.genre) {
+                    renderItems();
+                } else if (!currentGenre) {
+                    renderGenres(); 
+                }
             } else {
                 alert('保存に失敗しました');
             }
         }
-        
+
         async function deleteItem(id) {
             const res = await fetch(API_URL, {
                 method: 'POST',
@@ -721,6 +829,7 @@
             if(data.success) {
                 await fetchData();
                 closeDetail();
+                if(currentGenre) renderItems();
             }
         }
 
@@ -736,6 +845,7 @@
             document.getElementById('detail-stars').innerHTML = generateStars(item.rating || 0, 'w-5 h-5');
             document.getElementById('detail-rating-text').textContent = `${item.rating || 0} / 6`;
             
+            document.getElementById('detail-edit-btn').onclick = () => openItemModal(item);
             document.getElementById('detail-delete-btn').onclick = () => {
                 if(confirm('削除しますか？')) deleteItem(item.id);
             };
@@ -752,6 +862,7 @@
 
         function closeDetail() {
             document.getElementById('detail-view').classList.add('hidden');
+            editingItemId = null; // Clear edit state just in case
         }
 
         // --- Helper: Forms & Modals ---
@@ -760,13 +871,15 @@
             tempImageBase64 = null;
             document.getElementById('image-preview-container').innerHTML = `<i data-feather="image" class="w-5 h-5 mb-1"></i><span class="text-[10px]">画像を選択</span>`;
             resetRatingInput();
+            editingItemId = null;
+            document.getElementById('modal-title').textContent = '記録を追加';
+            document.getElementById('modal-submit-btn').textContent = '追加';
         }
 
         function setupRatingInput() {
             const container = document.getElementById('modal-rating-input');
             container.innerHTML = '';
             for(let i=1; i<=6; i++) {
-                // Create SVG directly to ensure click events work properly without relying on feather.replace behavior
                 const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                 svg.setAttribute("viewBox", "0 0 24 24");
                 svg.setAttribute("fill", "none");
@@ -824,7 +937,8 @@
 
         function openGenreModal() { document.getElementById('genre-modal').classList.remove('hidden'); }
         function closeGenreModal() { document.getElementById('genre-modal').classList.add('hidden'); }
-        function openItemModal() {
+        
+        function openItemModal(item = null) {
             const select = document.getElementById('item-genre-select');
             select.innerHTML = '';
             appData.genres.forEach(g => {
@@ -832,17 +946,44 @@
                     const opt = document.createElement('option');
                     opt.value = g;
                     opt.textContent = g;
+                    
+                    if (item && g === item.genre) opt.selected = true;
+                    else if (!item && currentGenre && g === currentGenre) opt.selected = true;
+                    
                     select.appendChild(opt);
                 }
             });
             if(select.options.length === 0) { alert('ジャンルを作成してください'); return; }
+
+            if (item) {
+                // Edit Mode
+                editingItemId = item.id;
+                document.getElementById('modal-title').textContent = '記録を編集';
+                document.getElementById('modal-submit-btn').textContent = '更新';
+                
+                document.getElementById('item-name').value = item.name;
+                document.getElementById('item-desc').value = item.desc;
+                document.getElementById('item-rating').value = item.rating;
+                currentRatingInput = item.rating;
+                
+                const previewContainer = document.getElementById('image-preview-container');
+                if (item.image) {
+                    previewContainer.innerHTML = `<img src="${item.image}" class="w-full h-full object-cover">`;
+                } else {
+                    previewContainer.innerHTML = `<i data-feather="image" class="w-5 h-5 mb-1"></i><span class="text-[10px]">画像を選択</span>`;
+                }
+            } else {
+                resetForm();
+            }
+
             document.getElementById('item-modal').classList.remove('hidden');
             setupRatingInput();
+            feather.replace(); // Reset feather for injected image icon
         }
         function closeItemModal() { document.getElementById('item-modal').classList.add('hidden'); }
 
         window.addEventListener('DOMContentLoaded', () => {
-            initTheme(); // Initialize theme preference
+            initTheme(); 
             const token = sessionStorage.getItem('fav_token');
             if (token) {
                 authToken = token;
