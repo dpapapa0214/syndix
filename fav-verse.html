@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fav-Verse | 私の好きなもの記録</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+
+    <style>
+        :root {
+            /* Dark Theme (Default) - Blue Universe */
+            --bg-color: #0b1120; /* Very Dark Blue */
+            --text-main: #f0f9ff;
+            --text-muted: #94a3b8;
+            --glass-bg: rgba(15, 23, 42, 0.4);
+            --glass-card-bg: rgba(30, 41, 59, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-highlight: rgba(56, 189, 248, 0.2);
+            --accent-primary: #3b82f6; /* Blue 500 */
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --blob-1: #1e3a8a; /* Blue 900 */
+            --blob-2: #0e7490; /* Cyan 700 */
+            --blob-3: #312e81; /* Indigo 900 */
+            --input-bg: rgba(0, 0, 0, 0.3);
+            --modal-bg: rgba(15, 23, 42, 0.95);
+        }
+
+        body.light-mode {
+            /* Light Theme - Blue Sky */
+            --bg-color: #f0f9ff; /* Sky 50 */
+            --text-main: #0f172a; /* Slate 900 */
+            --text-muted: #475569; /* Slate 600 */
+            --glass-bg: rgba(255, 255, 255, 0.4);
+            --glass-card-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(59, 130, 246, 0.2);
+            --glass-highlight: rgba(59, 130, 246, 0.4);
+            --accent-primary: #2563eb; /* Blue 600 */
+            --accent-glow: rgba(37, 99, 235, 0.3);
+            --blob-1: #bfdbfe; /* Blue 200 */
+            --blob-2: #a5f3fc; /* Cyan 200 */
+            --blob-3: #c7d2fe; /* Indigo 200 */
+            --input-bg: rgba(255, 255, 255, 0.6);
+            --modal-bg: rgba(240, 249, 255, 0.95);
+        }
+
+        body {
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+            min-height: 100vh;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* Ambient Background Animation */
+        .ambient-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: float 20s infinite alternate cubic-bezier(0.4, 0, 0.2, 1);
+            transition: background-color 0.5s ease;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: var(--blob-1); animation-delay: 0s; }
+        .blob-2 { bottom: -20%; right: -10%; width: 60vw; height: 60vw; background: var(--blob-2); animation-delay: -5s; }
+        .blob-3 { top: 40%; left: 40%; width: 30vw; height: 30vw; background: var(--blob-3); opacity: 0.4; animation-delay: -10s; }
+
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, 50px) scale(1.1); }
+        }
+
+        /* Glassmorphism Utilities */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+            color: var(--text-main);
+        }
+        
+        .glass-card {
+            background: var(--glass-card-bg);
+            border: 1px solid var(--glass-border);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-3px) scale(1.02);
+            border-color: var(--accent-primary);
+            box-shadow: 0 10px 20px 0 rgba(0, 0, 0, 0.1), 0 0 15px var(--accent-glow);
+        }
+
+        /* Text Utilities based on Theme */
+        .text-theme-muted { color: var(--text-muted); }
+        .text-theme-main { color: var(--text-main); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 10px; opacity: 0.5; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+
+        /* Custom Form Inputs */
+        .custom-input {
+            background: var(--input-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            transition: 0.3s;
+        }
+        .custom-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        /* Masonry Grid Layout - Compact */
+        .masonry-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeInUp 0.5s ease-out forwards;
+        }
+        
+        @keyframes fadeInRight {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        .fade-in-right {
+            animation: fadeInRight 0.4s ease-out forwards;
+        }
+        
+        .genre-active {
+            background: linear-gradient(135deg, var(--accent-primary), #0ea5e9);
+            border-color: transparent;
+            color: white;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        
+        .genre-inactive {
+            color: var(--text-muted);
+            border-color: var(--glass-border);
+        }
+        .genre-inactive:hover {
+            background: var(--glass-bg);
+            color: var(--text-main);
+        }
+
+        /* Star Rating */
+        .star-rating i {
+            transition: color 0.2s;
+            cursor: pointer;
+        }
+        .star-rating i.active {
+            fill: #fbbf24;
+            color: #fbbf24;
+        }
+        .star-rating i:hover {
+            transform: scale(1.2);
+        }
+        .star-static i.active {
+            fill: #fbbf24;
+            color: #fbbf24;
+        }
+        .star-static i.inactive {
+            color: var(--text-muted);
+            opacity: 0.3;
+        }
+
+
+        /* Line Clamp */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .auth-container {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Modal Background Override */
+        .modal-content {
+            background: var(--modal-bg);
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-blue-500 selection:text-white">
+
+    <div class="ambient-light">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 min-h-screen flex flex-col">
+        
+        <!-- Theme Toggle Button (Moved to Bottom-Left to avoid overlap) -->
+        <div class="fixed bottom-6 left-6 z-50">
+            <button onclick="toggleTheme()" class="p-3 rounded-full glass hover:bg-white/20 transition-all shadow-lg group border border-[var(--glass-border)]">
+                <!-- Sun Icon (for Dark Mode) -->
+                <i data-feather="sun" class="w-5 h-5 text-yellow-300 hidden light-mode-icon"></i>
+                <!-- Moon Icon (for Light Mode) -->
+                <i data-feather="moon" class="w-5 h-5 text-slate-400 hidden dark-mode-icon"></i>
+            </button>
+        </div>
+
+        <!-- AUTH VIEW -->
+        <div id="auth-view" class="auth-container fade-in">
+            <div class="glass w-full max-w-md p-8 rounded-2xl relative overflow-hidden">
+                <div class="text-center mb-8">
+                    <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400">Fav-Verse</h1>
+                    <p class="text-theme-muted text-sm mt-2">Login to your universe</p>
+                </div>
+
+                <div class="flex gap-2 mb-6 p-1 rounded-lg border border-[var(--glass-border)]">
+                    <button onclick="switchAuthMode('login')" id="tab-login" class="flex-1 py-2 text-sm rounded-md bg-[var(--accent-primary)] text-white font-medium transition shadow-md">ログイン</button>
+                    <button onclick="switchAuthMode('register')" id="tab-register" class="flex-1 py-2 text-sm rounded-md text-theme-muted hover:text-theme-main transition">新規登録</button>
+                </div>
+
+                <form id="auth-form" onsubmit="handleAuth(event)">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-theme-muted mb-1">Email</label>
+                            <input type="email" id="auth-email" required class="custom-input w-full px-4 py-2 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-theme-muted mb-1">Password</label>
+                            <input type="password" id="auth-password" required minlength="6" class="custom-input w-full px-4 py-2 rounded-lg text-sm">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full mt-6 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-3 rounded-lg shadow-lg hover:shadow-blue-500/30 transition transform hover:-translate-y-0.5">
+                        <span id="auth-btn-text">ログイン</span>
+                    </button>
+                </form>
+
+                <div class="mt-6 pt-6 border-t border-[var(--glass-border)] text-center">
+                    <button onclick="startDemoMode()" class="text-xs text-theme-muted hover:text-cyan-400 underline">
+                        アカウントなしで試す（デモモード）
+                    </button>
+                    <p class="text-[10px] text-theme-muted mt-2">デモモードのデータは保存されません</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- APP VIEW (Initially Hidden) -->
+        <div id="app-view" class="hidden flex-col flex-grow">
+            <!-- Header -->
+            <header class="flex flex-col md:flex-row justify-between items-center mb-6 fade-in pt-2">
+                <div class="mb-4 md:mb-0 flex items-center gap-4">
+                    <div>
+                        <h1 class="text-2xl md:text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-400">
+                            Fav-Verse
+                        </h1>
+                        <p class="text-theme-muted text-xs tracking-wider uppercase">My Collection</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3"> <!-- Removed pr-12 as toggle button moved -->
+                    <span id="user-display" class="text-xs text-theme-muted mr-2 hidden md:inline"></span>
+                    <button onclick="openGenreModal()" class="glass px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white/10 transition group">
+                        <i data-feather="folder-plus" class="w-3 h-3 group-hover:text-cyan-400 transition"></i>
+                        <span class="text-xs font-medium">ジャンル</span>
+                    </button>
+                    <button onclick="openItemModal()" class="bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-2 rounded-full shadow-lg shadow-blue-900/30 flex items-center gap-2 hover:scale-105 transition transform text-white">
+                        <i data-feather="plus" class="w-4 h-4"></i>
+                        <span class="text-xs font-bold">追加</span>
+                    </button>
+                    <button onclick="logout()" class="ml-2 p-2 text-theme-muted hover:text-red-400 transition" title="ログアウト">
+                        <i data-feather="log-out" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Genre Navigation -->
+            <nav class="mb-6 overflow-x-auto pb-2 fade-in">
+                <div id="genre-list" class="flex gap-2 min-w-max px-1">
+                    <!-- Javascript will inject genres here -->
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <div id="main-content" class="flex-grow relative">
+                
+                <!-- GRID VIEW -->
+                <main id="items-grid" class="masonry-grid fade-in transition-opacity duration-300">
+                    <!-- Javascript will inject items here -->
+                </main>
+
+                <!-- DETAIL VIEW (Overlay) -->
+                <div id="detail-view" class="hidden absolute inset-0 z-20 fade-in-right bg-[var(--modal-bg)] backdrop-blur-md rounded-xl overflow-hidden flex flex-col lg:flex-row h-full border border-[var(--glass-border)] shadow-2xl">
+                    <button onclick="closeDetail()" class="absolute top-4 left-4 z-30 flex items-center gap-2 text-white bg-black/40 hover:bg-black/60 backdrop-blur px-4 py-2 rounded-full transition">
+                        <i data-feather="arrow-left" class="w-4 h-4"></i>
+                        <span>戻る</span>
+                    </button>
+
+                    <!-- Image Section -->
+                    <div id="detail-image-container" class="w-full lg:w-1/2 h-64 lg:h-full relative bg-slate-900/10">
+                        <!-- Image injected here -->
+                    </div>
+
+                    <!-- Info Section -->
+                    <div class="w-full lg:w-1/2 p-6 lg:p-10 flex flex-col overflow-y-auto">
+                        <div class="flex items-center justify-between mb-2 mt-8 lg:mt-0">
+                            <span id="detail-genre" class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">Genre</span>
+                            <span id="detail-date" class="text-theme-muted font-mono text-xs">Date</span>
+                        </div>
+
+                        <h2 id="detail-name" class="text-2xl md:text-4xl font-bold text-theme-main mb-4 leading-tight">Title</h2>
+
+                        <div class="flex items-center gap-2 mb-6">
+                            <div id="detail-stars" class="flex gap-1 text-yellow-400 star-static"></div>
+                            <span id="detail-rating-text" class="text-theme-muted text-xs ml-2 font-mono"></span>
+                        </div>
+
+                        <div class="h-px bg-[var(--glass-border)] w-full mb-6"></div>
+
+                        <div class="flex-grow">
+                            <h3 class="text-xs font-bold text-theme-muted uppercase tracking-wider mb-3">Description</h3>
+                            <p id="detail-desc" class="text-theme-main text-sm md:text-base leading-relaxed whitespace-pre-wrap">Description text...</p>
+                        </div>
+
+                        <div class="mt-8 pt-6 border-t border-[var(--glass-border)] flex justify-end">
+                            <button id="detail-delete-btn" class="flex items-center gap-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 px-4 py-2 rounded-lg transition text-sm">
+                                <i data-feather="trash-2" class="w-4 h-4"></i>
+                                <span>この記録を削除</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer -->
+            <footer class="mt-8 text-center text-theme-muted text-[10px] py-4">
+                <p>Fav-Verse Cloud Edition</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Item Modal -->
+    <div id="item-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeItemModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-lg p-4">
+            <div class="modal-content rounded-2xl p-6 border border-[var(--glass-border)] shadow-2xl relative">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-theme-main">記録を追加</h2>
+                    <button onclick="closeItemModal()" class="text-theme-muted hover:text-theme-main"><i data-feather="x" class="w-5 h-5"></i></button>
+                </div>
+                <form id="item-form" onsubmit="handleAddItem(event)">
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">ジャンル</label>
+                                <select id="item-genre-select" required class="custom-input w-full px-3 py-2 rounded-lg text-xs appearance-none"></select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">評価</label>
+                                <div class="flex items-center h-[34px] px-1 star-rating" id="modal-rating-input"></div>
+                                <input type="hidden" id="item-rating" value="0" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">名前</label>
+                            <input type="text" id="item-name" required class="custom-input w-full px-3 py-2 rounded-lg text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">メモ</label>
+                            <textarea id="item-desc" rows="3" class="custom-input w-full px-3 py-2 rounded-lg text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">画像</label>
+                            <div class="relative group h-24">
+                                <input type="file" id="item-image" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="previewImage(this)">
+                                <div id="image-preview-container" class="image-upload-area w-full h-full rounded-lg border border-dashed border-[var(--glass-border)] flex flex-col items-center justify-center text-theme-muted group-hover:border-blue-400 transition bg-[var(--input-bg)]">
+                                    <i data-feather="image" class="w-5 h-5 mb-1"></i>
+                                    <span class="text-[10px]">画像を選択</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full mt-6 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold py-2.5 rounded-lg shadow-lg text-sm">追加</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Genre Modal -->
+    <div id="genre-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeGenreModal()"></div>
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-sm p-4">
+            <div class="modal-content rounded-2xl p-6 border border-[var(--glass-border)]">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-base font-bold text-theme-main">ジャンル追加</h2>
+                    <button onclick="closeGenreModal()" class="text-theme-muted hover:text-theme-main"><i data-feather="x" class="w-5 h-5"></i></button>
+                </div>
+                <form onsubmit="handleAddGenre(event)">
+                    <input type="text" id="new-genre-name" required placeholder="ジャンル名" class="custom-input w-full px-4 py-2 rounded-lg text-sm mb-4">
+                    <button type="submit" class="w-full bg-cyan-600 text-white font-bold py-2 rounded-lg text-sm">作成</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const API_URL = 'https://ethimp0.shop/apifav.php'; 
+        
+        let isDemo = false;
+        let authToken = null;
+        let authUser = null;
+        let isLightMode = false;
+
+        // --- Data State ---
+        let appData = { genres: [], items: [] };
+        let currentGenre = '全て';
+        let tempImageBase64 = null;
+        let currentRatingInput = 0;
+
+        // --- Demo Data (Fallback) ---
+        const DEMO_DATA = {
+            genres: ['全て', 'カフェ', 'ガジェット', '読書', '映画', '旅行'],
+            items: [
+                { id: 1, genre: 'カフェ', name: 'Blue Bottle Coffee', desc: '洗練された空間と、丁寧にドリップされたコーヒー。', date: '2023/10/25', rating: 6, image: null },
+                { id: 2, genre: 'ガジェット', name: 'iPhone 15 Pro', desc: 'チタニウムの質感が美しいブルー。', date: '2023/11/02', rating: 5, image: null },
+                { id: 3, genre: '読書', name: '海辺のカフカ', desc: '静かな青い海を想像させる物語。', date: '2023/12/01', rating: 4, image: null },
+                { id: 4, genre: '映画', name: 'グラン・ブルー', desc: '深く、美しい青の世界。', date: '2024/01/15', rating: 6, image: null },
+                { id: 5, genre: '旅行', name: '沖縄・宮古島', desc: 'この世のものとは思えない「宮古ブルー」。', date: '2024/02/10', rating: 5, image: null }
+            ]
+        };
+
+        // --- Theme Logic ---
+        function toggleTheme() {
+            isLightMode = !isLightMode;
+            if (isLightMode) {
+                document.body.classList.add('light-mode');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.body.classList.remove('light-mode');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateThemeIcons();
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                isLightMode = true;
+                document.body.classList.add('light-mode');
+            } else {
+                isLightMode = false;
+                document.body.classList.remove('light-mode');
+            }
+            updateThemeIcons();
+        }
+
+        function updateThemeIcons() {
+            const sunIcon = document.querySelector('.light-mode-icon');
+            const moonIcon = document.querySelector('.dark-mode-icon');
+            
+            // If Light Mode is ON, show Moon (to switch to Dark)
+            // If Dark Mode is ON, show Sun (to switch to Light)
+            if (isLightMode) {
+                sunIcon.classList.add('hidden');
+                moonIcon.classList.remove('hidden');
+            } else {
+                sunIcon.classList.remove('hidden');
+                moonIcon.classList.add('hidden');
+            }
+        }
+
+        // --- Auth Logic ---
+        let authMode = 'login'; 
+
+        function switchAuthMode(mode) {
+            authMode = mode;
+            const activeClass = 'flex-1 py-2 text-sm rounded-md bg-[var(--accent-primary)] text-white font-medium transition shadow-md';
+            const inactiveClass = 'flex-1 py-2 text-sm rounded-md text-theme-muted hover:text-theme-main transition';
+            
+            document.getElementById('tab-login').className = mode === 'login' ? activeClass : inactiveClass;
+            document.getElementById('tab-register').className = mode === 'register' ? activeClass : inactiveClass;
+            document.getElementById('auth-btn-text').textContent = mode === 'login' ? 'ログイン' : 'アカウント作成';
+        }
+
+        async function handleAuth(e) {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: authMode, email: email, password: password })
+                });
+
+                if (!response.ok && response.status === 404) throw new Error('API Not Found');
+                const data = await response.json();
+
+                if (data.success) {
+                    authToken = data.token;
+                    authUser = data.user_id;
+                    sessionStorage.setItem('fav_token', authToken);
+                    initApp();
+                } else {
+                    alert(data.message || '認証に失敗しました');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('通信エラー: デモモードを使用します。');
+            }
+        }
+
+        function startDemoMode() {
+            isDemo = true;
+            appData = JSON.parse(JSON.stringify(DEMO_DATA));
+            document.getElementById('user-display').textContent = 'Demo User';
+            showAppView();
+            render();
+        }
+
+        function logout() {
+            authToken = null;
+            authUser = null;
+            sessionStorage.removeItem('fav_token');
+            isDemo = false;
+            document.getElementById('app-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+            document.getElementById('auth-form').reset();
+        }
+
+        // --- App Initialization ---
+        async function initApp() {
+            document.getElementById('user-display').textContent = 'Logged In';
+            showAppView();
+            await fetchData();
+        }
+
+        function showAppView() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('app-view').classList.remove('hidden');
+            document.getElementById('app-view').classList.add('flex');
+            feather.replace();
+        }
+
+        async function fetchData() {
+            if (isDemo) return;
+            try {
+                const resG = await fetch(`${API_URL}?action=get_genres&token=${authToken}`);
+                const dataG = await resG.json();
+                if (dataG.success) appData.genres = ['全て', ...dataG.genres];
+
+                const resI = await fetch(`${API_URL}?action=get_items&token=${authToken}`);
+                const dataI = await resI.json();
+                if (dataI.success) appData.items = dataI.items;
+                render();
+            } catch (e) { console.error("Fetch error", e); }
+        }
+
+        // --- Render Functions ---
+        function render() {
+            renderGenres();
+            renderItems();
+            feather.replace();
+        }
+
+        function renderGenres() {
+            const container = document.getElementById('genre-list');
+            container.innerHTML = '';
+            appData.genres.forEach(genre => {
+                const btn = document.createElement('button');
+                const isActive = genre === currentGenre;
+                btn.className = `px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all duration-300 border ${
+                    isActive ? 'genre-active scale-105' : 'genre-inactive'
+                }`;
+                btn.textContent = genre;
+                btn.onclick = () => { currentGenre = genre; render(); };
+                if (genre !== '全て') {
+                    btn.oncontextmenu = (e) => {
+                        e.preventDefault();
+                        if(confirm(`ジャンル「${genre}」を削除しますか？`)) deleteGenre(genre);
+                    };
+                }
+                container.appendChild(btn);
+            });
+        }
+
+        function renderItems() {
+            const grid = document.getElementById('items-grid');
+            grid.innerHTML = '';
+
+            const filteredItems = currentGenre === '全て' ? appData.items : appData.items.filter(i => i.genre === currentGenre);
+            filteredItems.sort((a, b) => b.id - a.id);
+
+            if (filteredItems.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-20 opacity-50"><p class="text-theme-muted text-sm">No Items Found</p></div>`;
+                return;
+            }
+
+            filteredItems.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = `glass-card rounded-xl overflow-hidden flex flex-col fade-in relative group`;
+                card.style.animationDelay = `${index * 0.05}s`;
+                card.onclick = () => openDetail(item.id);
+
+                let imageHTML = '';
+                if (item.image) {
+                    imageHTML = `<div class="h-24 w-full bg-cover bg-center" style="background-image: url('${item.image}')"></div>`;
+                } else {
+                    const colors = ['from-blue-500 to-cyan-500', 'from-sky-500 to-indigo-500', 'from-cyan-500 to-blue-500'];
+                    const colorClass = colors[item.name.length % colors.length];
+                    imageHTML = `
+                        <div class="h-24 w-full bg-gradient-to-br ${colorClass} flex items-center justify-center relative overflow-hidden">
+                            <span class="text-2xl font-bold text-white/40 select-none">${item.name.charAt(0)}</span>
+                        </div>
+                    `;
+                }
+
+                const starsHTML = generateStars(item.rating || 0, 'w-2.5 h-2.5');
+
+                card.innerHTML = `
+                    ${imageHTML}
+                    <div class="p-3 flex flex-col flex-grow relative">
+                        <span class="absolute -top-2 right-2 px-1.5 py-0.5 bg-black/60 backdrop-blur text-[9px] font-bold text-white rounded text-xs border border-white/10 z-10 truncate max-w-[80px]">
+                            ${item.genre}
+                        </span>
+                        
+                        <h3 class="text-sm font-bold leading-tight text-theme-main mb-1 truncate">${item.name}</h3>
+                        
+                        <div class="flex gap-0.5 mb-1.5 text-yellow-400 opacity-90 star-static">${starsHTML}</div>
+                        
+                        <p class="text-theme-muted text-[10px] leading-relaxed mb-2 flex-grow line-clamp-2">${item.desc}</p>
+                        
+                        <div class="pt-2 border-t border-[var(--glass-border)] flex justify-between items-center mt-auto">
+                            <span class="text-[9px] text-theme-muted font-mono">${item.date || ''}</span>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function generateStars(count, sizeClass) {
+            let html = '';
+            for (let i = 1; i <= 6; i++) {
+                const fill = i <= count ? 'active' : 'inactive';
+                html += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${sizeClass} ${fill} feather feather-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+            }
+            return html;
+        }
+
+        // --- Data Manipulation (API Wrappers) ---
+        async function handleAddGenre(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-genre-name').value.trim();
+            if (!name) return;
+
+            if (isDemo) {
+                if (!appData.genres.includes(name)) {
+                    appData.genres.push(name);
+                    currentGenre = name;
+                    render();
+                    closeGenreModal();
+                    document.getElementById('new-genre-name').value = '';
+                }
+                return;
+            }
+
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'add_genre', token: authToken, name: name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                await fetchData();
+                closeGenreModal();
+                currentGenre = name;
+                document.getElementById('new-genre-name').value = '';
+                render();
+            }
+        }
+
+        async function deleteGenre(name) {
+            if (isDemo) {
+                appData.genres = appData.genres.filter(g => g !== name);
+                appData.items = appData.items.filter(i => i.genre !== name);
+                if (currentGenre === name) currentGenre = '全て';
+                render();
+                return;
+            }
+             const res = await fetch(API_URL, {
+                method: 'POST', 
+                body: JSON.stringify({ action: 'delete_genre', token: authToken, name: name })
+            });
+            const data = await res.json();
+            if(data.success) {
+                if (currentGenre === name) currentGenre = '全て';
+                await fetchData();
+            }
+        }
+
+        async function handleAddItem(e) {
+            e.preventDefault();
+            const itemData = {
+                genre: document.getElementById('item-genre-select').value,
+                name: document.getElementById('item-name').value,
+                desc: document.getElementById('item-desc').value,
+                rating: parseInt(document.getElementById('item-rating').value) || 0,
+                image: tempImageBase64
+            };
+
+            if (itemData.rating === 0) { alert('評価を選択してください'); return; }
+
+            if (isDemo) {
+                appData.items.unshift({ ...itemData, id: Date.now(), date: new Date().toLocaleDateString('ja-JP') });
+                closeItemModal();
+                render();
+                return;
+            }
+
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'add_item', token: authToken, ...itemData })
+            });
+            const data = await res.json();
+            if (data.success) {
+                await fetchData();
+                closeItemModal();
+                resetForm();
+            } else {
+                alert('保存に失敗しました');
+            }
+        }
+        
+        async function deleteItem(id) {
+             if (isDemo) {
+                appData.items = appData.items.filter(i => i.id !== id);
+                closeDetail();
+                render();
+                return;
+            }
+
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'delete_item', token: authToken, id: id })
+            });
+            const data = await res.json();
+            if(data.success) {
+                await fetchData();
+                closeDetail();
+            }
+        }
+
+        // --- Detail View Logic ---
+        function openDetail(id) {
+            const item = appData.items.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('detail-name').textContent = item.name;
+            document.getElementById('detail-genre').textContent = item.genre;
+            document.getElementById('detail-date').textContent = item.date;
+            document.getElementById('detail-desc').textContent = item.desc;
+            document.getElementById('detail-stars').innerHTML = generateStars(item.rating || 0, 'w-5 h-5');
+            document.getElementById('detail-rating-text').textContent = `${item.rating || 0} / 6`;
+            
+            document.getElementById('detail-delete-btn').onclick = () => {
+                if(confirm('削除しますか？')) deleteItem(item.id);
+            };
+
+            const imgContainer = document.getElementById('detail-image-container');
+            if (item.image) {
+                imgContainer.innerHTML = `<img src="${item.image}" class="absolute inset-0 w-full h-full object-cover">`;
+            } else {
+                imgContainer.innerHTML = `<div class="absolute inset-0 bg-slate-500/10 flex items-center justify-center"><span class="text-white/20 text-6xl font-bold">${item.name.charAt(0)}</span></div>`;
+            }
+
+            document.getElementById('detail-view').classList.remove('hidden');
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-view').classList.add('hidden');
+        }
+
+        // --- Helper: Forms & Modals ---
+        function resetForm() {
+            document.getElementById('item-form').reset();
+            tempImageBase64 = null;
+            document.getElementById('image-preview-container').innerHTML = `<i data-feather="image" class="w-5 h-5 mb-1"></i><span class="text-[10px]">画像を選択</span>`;
+            resetRatingInput();
+        }
+
+        function setupRatingInput() {
+            const container = document.getElementById('modal-rating-input');
+            container.innerHTML = '';
+            for(let i=1; i<=6; i++) {
+                const star = document.createElement('i');
+                star.dataset.feather = 'star';
+                star.className = 'w-5 h-5 mr-1 text-theme-muted transition hover:text-yellow-400';
+                star.onclick = () => {
+                    currentRatingInput = i;
+                    document.getElementById('item-rating').value = i;
+                    updateRatingVisuals();
+                };
+                container.appendChild(star);
+            }
+            feather.replace();
+        }
+
+        function updateRatingVisuals() {
+            const stars = document.querySelectorAll('#modal-rating-input svg');
+            stars.forEach((star, index) => {
+                if (index < currentRatingInput) {
+                    star.classList.add('active');
+                    star.classList.remove('text-theme-muted');
+                    star.style.fill = "#fbbf24";
+                } else {
+                    star.classList.remove('active');
+                    star.classList.add('text-theme-muted');
+                    star.style.fill = "none";
+                }
+            });
+        }
+        function resetRatingInput() {
+            currentRatingInput = 0;
+            document.getElementById('item-rating').value = 0;
+            updateRatingVisuals();
+        }
+
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    tempImageBase64 = e.target.result;
+                    document.getElementById('image-preview-container').innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function openGenreModal() { document.getElementById('genre-modal').classList.remove('hidden'); }
+        function closeGenreModal() { document.getElementById('genre-modal').classList.add('hidden'); }
+        function openItemModal() {
+            const select = document.getElementById('item-genre-select');
+            select.innerHTML = '';
+            appData.genres.forEach(g => {
+                if (g !== '全て') {
+                    const opt = document.createElement('option');
+                    opt.value = g;
+                    opt.textContent = g;
+                    select.appendChild(opt);
+                }
+            });
+            if(select.options.length === 0 && !isDemo) { alert('ジャンルを作成してください'); return; }
+            document.getElementById('item-modal').classList.remove('hidden');
+            setupRatingInput();
+        }
+        function closeItemModal() { document.getElementById('item-modal').classList.add('hidden'); }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme(); // Initialize theme preference
+            const token = sessionStorage.getItem('fav_token');
+            if (token) {
+                authToken = token;
+                initApp();
+            }
+            feather.replace();
+        });
+    </script>
+</body>
+</html>
