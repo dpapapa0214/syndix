@@ -175,7 +175,7 @@
             color: var(--text-main);
         }
 
-        /* Star Rating */
+        /* Star Rating CSS Fixed */
         .star-rating svg {
             transition: color 0.2s;
             cursor: pointer;
@@ -187,13 +187,16 @@
         .star-rating svg:hover {
             transform: scale(1.2);
         }
-        .star-static i.active {
+        
+        /* Updated Selector: Use 'svg' instead of 'i' for static display */
+        .star-static svg.active {
             fill: #fbbf24;
             color: #fbbf24;
         }
-        .star-static i.inactive {
+        .star-static svg.inactive {
             color: var(--text-muted);
             opacity: 0.3;
+            fill: none;
         }
 
 
