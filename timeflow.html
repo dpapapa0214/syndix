@@ -140,9 +140,10 @@
         <!-- 月間ビュー -->
         <div id="monthViewWrapper" class="h-full overflow-auto fade-in">
             <div class="min-w-max p-6 pb-32">
-                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 overflow-hidden">
-                    <!-- テーブルヘッダー (日付軸) -->
-                    <div id="gridHeader" class="sticky top-0 z-20 timetable-grid bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
+                <!-- overflow-hidden を削除して sticky が効くように修正 -->
+                <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200">
+                    <!-- テーブルヘッダー (日付軸) z-30 に強化 -->
+                    <div id="gridHeader" class="sticky top-0 z-30 timetable-grid bg-slate-50/95 backdrop-blur-sm border-b border-slate-200">
                         <!-- JSで描画 -->
                     </div>
                     <!-- テーブルボディ (時限軸) -->
@@ -646,8 +647,8 @@
             gridHeader.style = gridTemplate;
 
             // ヘッダー生成 (横軸: 日付)
-            // 左上の角（時限/日付の交点）は固定
-            let headerHTML = `<div class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center border-r border-slate-200 flex items-center justify-center bg-slate-50 sticky left-0 z-20 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">Period</div>`;
+            // 左上の角（時限/日付の交点）は固定 z-40 に強化
+            let headerHTML = `<div class="p-3 text-xs font-bold text-slate-400 uppercase tracking-wider text-center border-r border-slate-200 flex items-center justify-center bg-slate-50 sticky left-0 z-40 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">Period</div>`;
             
             daysInMonth.forEach(dayObj => {
                 const isToday = isDateToday(dayObj);
@@ -679,8 +680,8 @@
                 // 行コンテナ (Grid)
                 bodyHTML += `
                     <div class="timetable-grid hover:bg-slate-50/30 transition-colors border-b border-slate-100 last:border-b-0" style="${gridTemplate}">
-                        <!-- 左端: 時限ラベル (固定) -->
-                        <div class="p-3 border-r border-slate-200 flex flex-col justify-center items-center bg-white sticky left-0 z-10 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">
+                        <!-- 左端: 時限ラベル (固定) z-20 に強化 -->
+                        <div class="p-3 border-r border-slate-200 flex flex-col justify-center items-center bg-white sticky left-0 z-20 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)]">
                             <span class="text-lg font-bold text-slate-800">${p}</span>
                             <span class="text-[10px] font-mono text-slate-400 mt-1 leading-tight text-center">${time.start}<br>|<br>${time.end}</span>
                         </div>
@@ -959,7 +960,6 @@
 
         // --- 一括登録モーダル ---
         function setupBulkSelectors() {
-            // 時限セレクタ（複数選択）
             const periodContainer = document.getElementById('bulkPeriodSelector');
             let periodHtml = '';
             periods.forEach(p => {
@@ -971,7 +971,6 @@
             });
             periodContainer.innerHTML = periodHtml;
 
-            // 曜日セレクタ（複数選択）
             const days = ['日','月','火','水','木','金','土'];
             const dayContainer = document.getElementById('bulkDayButtons');
             let dayHtml = '';
@@ -990,15 +989,13 @@
             document.getElementById('bulkRoom').value = '';
             selectBulkColor(0);
             
-            // 状態リセット
-            bulkSelectedPeriods = new Set([1]); // デフォルト1限
-            bulkSelectedDays = new Set([1]);    // デフォルト月曜
+            bulkSelectedPeriods = new Set([1]); 
+            bulkSelectedDays = new Set([1]);    
             updateBulkPeriodUI();
             updateBulkDayUI();
 
             toggleSpecificDay(); 
 
-            // 期間のデフォルト設定（現在表示中の月の初日〜末日）
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth() + 1;
             const lastDay = new Date(year, month, 0).getDate();
@@ -1022,7 +1019,7 @@
 
         function toggleBulkPeriod(period) {
             if (bulkSelectedPeriods.has(period)) {
-                if (bulkSelectedPeriods.size > 1) { // 少なくとも1つは選択させる
+                if (bulkSelectedPeriods.size > 1) { 
                     bulkSelectedPeriods.delete(period);
                 }
             } else {
@@ -1044,7 +1041,7 @@
 
         function toggleBulkDay(index) {
             if (bulkSelectedDays.has(index)) {
-                if (bulkSelectedDays.size > 1) { // 少なくとも1つは選択させる
+                if (bulkSelectedDays.size > 1) { 
                     bulkSelectedDays.delete(index);
                 }
             } else {
@@ -1076,7 +1073,6 @@
             const rule = document.getElementById('bulkRule').value;
             const targetPeriods = Array.from(bulkSelectedPeriods);
 
-            // 期間の取得
             const startDateVal = document.getElementById('bulkStartDate').value;
             const endDateVal = document.getElementById('bulkEndDate').value;
             if (!startDateVal || !endDateVal) {
@@ -1092,7 +1088,6 @@
             }
 
             let count = 0;
-            // 開始日から終了日までループ
             for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
                 let shouldUpdate = false;
                 const dayNum = d.getDate();
@@ -1107,7 +1102,6 @@
                 }
 
                 if (shouldUpdate) {
-                    // 選択された全ての時限に対して登録
                     targetPeriods.forEach(p => {
                         const y = d.getFullYear();
                         const m = String(d.getMonth() + 1).padStart(2, '0');
