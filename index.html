@@ -30,7 +30,7 @@
             --blob-2: #0e7490; /* Cyan 700 */
             --blob-3: #312e81; /* Indigo 900 */
             --input-bg: rgba(0, 0, 0, 0.3);
-            --modal-bg: rgba(15, 23, 42, 0.95);
+            --modal-bg: rgba(15, 23, 42, 0.98); /* Slightly more opaque for fixed overlay */
         }
 
         body.light-mode {
@@ -48,7 +48,7 @@
             --blob-2: #a5f3fc; /* Cyan 200 */
             --blob-3: #c7d2fe; /* Indigo 200 */
             --input-bg: rgba(255, 255, 255, 0.6);
-            --modal-bg: rgba(240, 249, 255, 0.95);
+            --modal-bg: rgba(240, 249, 255, 0.98);
         }
 
         body {
@@ -175,7 +175,7 @@
             color: var(--text-main);
         }
 
-        /* Star Rating CSS Fixed */
+        /* Star Rating CSS */
         .star-rating svg {
             transition: color 0.2s;
             cursor: pointer;
@@ -187,8 +187,6 @@
         .star-rating svg:hover {
             transform: scale(1.2);
         }
-        
-        /* Updated Selector: Use 'svg' instead of 'i' for static display */
         .star-static svg.active {
             fill: #fbbf24;
             color: #fbbf24;
@@ -198,7 +196,6 @@
             opacity: 0.3;
             fill: none;
         }
-
 
         /* Line Clamp */
         .line-clamp-2 {
@@ -343,20 +340,20 @@
                     </main>
                 </div>
 
-                <!-- DETAIL VIEW (Overlay) -->
-                <div id="detail-view" class="hidden absolute inset-0 z-20 fade-in-right bg-[var(--modal-bg)] backdrop-blur-md rounded-xl overflow-hidden flex flex-col lg:flex-row h-full border border-[var(--glass-border)] shadow-2xl">
+                <!-- DETAIL VIEW (Fixed Overlay for Layout Bug Fix) -->
+                <div id="detail-view" class="hidden fixed inset-0 z-50 fade-in-right bg-[var(--modal-bg)] backdrop-blur-md flex flex-col lg:flex-row h-full">
                     <button onclick="closeDetail()" class="absolute top-4 left-4 z-30 flex items-center gap-2 text-white bg-black/40 hover:bg-black/60 backdrop-blur px-4 py-2 rounded-full transition">
                         <i data-feather="arrow-left" class="w-4 h-4"></i>
                         <span>戻る</span>
                     </button>
 
                     <!-- Image Section -->
-                    <div id="detail-image-container" class="w-full lg:w-1/2 h-64 lg:h-full relative bg-slate-900/10">
+                    <div id="detail-image-container" class="w-full lg:w-1/2 h-1/2 lg:h-full relative bg-slate-900/10">
                         <!-- Image injected here -->
                     </div>
 
                     <!-- Info Section -->
-                    <div class="w-full lg:w-1/2 p-6 lg:p-10 flex flex-col overflow-y-auto">
+                    <div class="w-full lg:w-1/2 h-1/2 lg:h-full p-6 lg:p-10 flex flex-col overflow-y-auto">
                         <div class="flex items-center justify-between mb-2 mt-8 lg:mt-0">
                             <div class="flex items-center gap-2">
                                 <span id="detail-genre" class="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-bold rounded-full border border-blue-500/30">Genre</span>
@@ -378,7 +375,7 @@
                             <p id="detail-desc" class="text-theme-main text-sm md:text-base leading-relaxed whitespace-pre-wrap">Description text...</p>
                         </div>
 
-                        <div class="mt-8 pt-6 border-t border-[var(--glass-border)] flex justify-end gap-3">
+                        <div class="mt-8 pt-6 border-t border-[var(--glass-border)] flex justify-end gap-3 pb-8">
                             <button id="detail-edit-btn" class="flex items-center gap-2 text-blue-400 hover:text-blue-300 hover:bg-blue-400/10 px-4 py-2 rounded-lg transition text-sm font-medium">
                                 <i data-feather="edit-2" class="w-4 h-4"></i>
                                 <span>編集</span>
@@ -479,7 +476,7 @@
         let currentSort = 'date_desc'; 
         let tempImageBase64 = null;
         let currentRatingInput = 0;
-        let editingItemId = null; // ID of item being edited
+        let editingItemId = null; 
 
         // --- Theme Logic ---
         function toggleTheme() {
@@ -550,7 +547,8 @@
                 if (data.success) {
                     authToken = data.token;
                     authUser = data.user_id;
-                    sessionStorage.setItem('fav_token', authToken);
+                    // Changed to localStorage for persistent login
+                    localStorage.setItem('fav_token', authToken);
                     initApp();
                 } else {
                     alert(data.message || '認証に失敗しました');
@@ -564,7 +562,7 @@
         function logout() {
             authToken = null;
             authUser = null;
-            sessionStorage.removeItem('fav_token');
+            localStorage.removeItem('fav_token'); // Clear localStorage
             document.getElementById('app-view').classList.add('hidden');
             document.getElementById('auth-view').classList.remove('hidden');
             document.getElementById('auth-form').reset();
@@ -865,7 +863,7 @@
 
         function closeDetail() {
             document.getElementById('detail-view').classList.add('hidden');
-            editingItemId = null; // Clear edit state just in case
+            editingItemId = null; 
         }
 
         // --- Helper: Forms & Modals ---
@@ -987,7 +985,8 @@
 
         window.addEventListener('DOMContentLoaded', () => {
             initTheme(); 
-            const token = sessionStorage.getItem('fav_token');
+            // Changed from sessionStorage to localStorage
+            const token = localStorage.getItem('fav_token');
             if (token) {
                 authToken = token;
                 initApp();
