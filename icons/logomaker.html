@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logo Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Poppins:wght@700;900&family=Anton&family=Cinzel:wght@700&family=Pacifico&family=Righteous&display=swap" rel="stylesheet">
+    <link rel="icon" href="icons/logo-scanface.png">
+    <style>
+        body {
+            font-family: 'Poppins', 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .canvas-container {
+            background-image: 
+                linear-gradient(45deg, #e5e7eb 25%, transparent 25%), 
+                linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #e5e7eb 75%), 
+                linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db; 
+            border-radius: 3px;
+        }
+
+        /* 選択状態のスタイル */
+        .selected-btn {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+            color: #2563eb !important;
+            ring: 2px solid #3b82f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col items-center py-8 px-4">
+
+    <!-- FontAwesomeのUnicode取得用隠し要素 -->
+    <div id="fa-helper" style="position: absolute; left: -9999px; visibility: hidden;"></div>
+
+    <header class="mb-8 text-center">
+        <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            Logo Maker <span class="text-slate-400 font-light text-xl">Ultimate</span>
+        </h1>
+        <p class="text-slate-500 mt-2 text-sm">アイコン、またはテキストでオリジナルのロゴを作成</p>
+    </header>
+
+    <main class="w-full max-w-6xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+        
+        <!-- 左側：設定パネル -->
+        <div class="w-full md:w-1/2 flex flex-col border-r border-slate-200">
+            
+            <!-- タブナビゲーション -->
+            <div class="flex border-b border-slate-200">
+                <button id="tabIcon" class="flex-1 py-4 text-center font-bold text-sm uppercase tracking-wider hover:bg-slate-50 border-b-2 border-blue-600 text-blue-600 transition-colors" onclick="switchMode('icon')">
+                    <i data-lucide="image" class="inline-block w-4 h-4 mr-1 mb-1"></i> アイコンモード
+                </button>
+                <button id="tabText" class="flex-1 py-4 text-center font-bold text-sm uppercase tracking-wider hover:bg-slate-50 border-b-2 border-transparent text-slate-400 transition-colors" onclick="switchMode('text')">
+                    <i data-lucide="type" class="inline-block w-4 h-4 mr-1 mb-1"></i> テキストモード
+                </button>
+            </div>
+
+            <!-- スクロール可能な設定エリア -->
+            <div class="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1" style="max-height: 750px;">
+
+                <!-- モード別コンテンツ: アイコン -->
+                <div id="modeIconContent">
+                    <section class="mb-8">
+                        <div class="flex justify-between items-end mb-3">
+                            <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">1. アイコンを選択</h2>
+                            <span class="text-[10px] text-slate-400" id="iconCount"></span>
+                        </div>
+                        
+                        <!-- 検索バー -->
+                        <div class="mb-3 relative">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                            <input type="text" id="iconSearch" placeholder="アイコンを検索 (例: star, twitter, apple)..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-400 bg-slate-50">
+                        </div>
+
+                        <!-- アイコングリッド -->
+                        <div id="iconGrid" class="custom-scrollbar grid grid-cols-5 gap-2 h-64 overflow-y-auto p-1 border border-slate-100 rounded-lg">
+                            <!-- JSで生成 -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- モード別コンテンツ: テキスト -->
+                <div id="modeTextContent" class="hidden">
+                    <section class="mb-8">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">1. メインテキスト設定</h2>
+                        <input type="text" id="mainText" value="A" class="w-full text-center text-4xl font-bold p-4 mb-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="イニシャルなど">
+                        
+                        <label class="block text-xs font-semibold text-slate-500 mb-2">フォントを選択</label>
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <button class="font-btn p-3 border rounded text-center hover:bg-slate-50" style="font-family: 'Poppins', sans-serif;" onclick="setFont('Poppins')">Poppins</button>
+                            <button class="font-btn p-3 border rounded text-center hover:bg-slate-50" style="font-family: 'Cinzel', serif;" onclick="setFont('Cinzel')">Cinzel</button>
+                            <button class="font-btn p-3 border rounded text-center hover:bg-slate-50" style="font-family: 'Anton', sans-serif;" onclick="setFont('Anton')">Anton</button>
+                            <button class="font-btn p-3 border rounded text-center hover:bg-slate-50" style="font-family: 'Righteous', cursive;" onclick="setFont('Righteous')">Righteous</button>
+                            <button class="font-btn p-3 border rounded text-center hover:bg-slate-50" style="font-family: 'Pacifico', cursive;" onclick="setFont('Pacifico')">Pacifico</button>
+                            <button class="font-btn p-3 border rounded text-center hover:bg-slate-50" style="font-family: 'Noto Sans JP', sans-serif;" onclick="setFont('Noto Sans JP')">Noto Sans JP</button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- 共通: 背景設定 (背景画像機能を追加) -->
+                <section class="mb-8 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">2. 背景 & パターン</h2>
+                    
+                    <!-- 背景画像アップロード (New) -->
+                    <div class="mb-4 p-3 bg-white rounded-lg border border-slate-200">
+                        <label class="block text-xs font-semibold text-slate-500 mb-2">背景画像 (任意)</label>
+                        <div class="flex items-center gap-2">
+                            <label class="flex-1 cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold py-2 px-4 rounded-lg flex items-center justify-center transition-colors">
+                                <i data-lucide="image" class="w-4 h-4 mr-2"></i> 画像を選択
+                                <input type="file" id="bgImageInput" accept="image/*" class="hidden">
+                            </label>
+                            <button id="removeBgImageBtn" class="hidden text-xs text-red-500 hover:bg-red-50 p-2 rounded-lg border border-red-200 transition-colors" title="背景画像を削除">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1 pl-1">※画像を設定するとグラデーションは無効になります</p>
+                    </div>
+
+                    <!-- プリセット選択エリア -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-semibold text-slate-500 mb-2">カラープリセット</label>
+                        <div id="gradientPresets" class="custom-scrollbar grid grid-cols-8 gap-2 max-h-48 overflow-y-auto p-1 mb-2">
+                            <!-- JSで生成 -->
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Color 1</label>
+                            <input type="color" id="color1" value="#4f46e5" class="h-10 w-full cursor-pointer rounded border border-slate-300">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">Color 2</label>
+                            <input type="color" id="color2" value="#ec4899" class="h-10 w-full cursor-pointer rounded border border-slate-300">
+                        </div>
+                    </div>
+
+                    <!-- パターン選択 -->
+                    <div class="mb-2">
+                        <label class="block text-xs font-semibold text-slate-500 mb-2">パターンオーバーレイ</label>
+                        <div class="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                            <button class="pattern-btn flex-shrink-0 w-12 h-12 bg-white border border-slate-300 rounded hover:border-blue-500" onclick="setPattern('none')" title="なし">無</button>
+                            <button class="pattern-btn flex-shrink-0 w-12 h-12 bg-white border border-slate-300 rounded hover:border-blue-500" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 8px 8px;" onclick="setPattern('dots')" title="ドット"></button>
+                            <button class="pattern-btn flex-shrink-0 w-12 h-12 bg-white border border-slate-300 rounded hover:border-blue-500" style="background-image: linear-gradient(0deg, transparent 24%, #cbd5e1 25%, #cbd5e1 26%, transparent 27%, transparent 74%, #cbd5e1 75%, #cbd5e1 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, #cbd5e1 25%, #cbd5e1 26%, transparent 27%, transparent 74%, #cbd5e1 75%, #cbd5e1 76%, transparent 77%, transparent); background-size: 16px 16px;" onclick="setPattern('grid')" title="グリッド"></button>
+                            <button class="pattern-btn flex-shrink-0 w-12 h-12 bg-white border border-slate-300 rounded hover:border-blue-500" style="background-image: repeating-linear-gradient(45deg, #cbd5e1 0, #cbd5e1 1px, transparent 0, transparent 50%); background-size: 10px 10px;" onclick="setPattern('lines')" title="斜線"></button>
+                            <button class="pattern-btn flex-shrink-0 w-12 h-12 bg-white border border-slate-300 rounded hover:border-blue-500" style="background-image: radial-gradient(#cbd5e1 20%, transparent 20%), radial-gradient(#cbd5e1 20%, transparent 20%); background-position: 0 0, 8px 8px; background-size: 16px 16px;" onclick="setPattern('polka')" title="水玉"></button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 共通: サイズ・調整 -->
+                <section class="mb-8">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">3. サイズ & 調整</h2>
+                    
+                    <!-- アイコン用スライダー -->
+                    <div id="iconSliders">
+                        <div class="mb-4">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">アイコンサイズ</label>
+                            <input type="range" id="iconSize" min="50" max="400" value="250" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">線の太さ (Lucideのみ)</label>
+                            <input type="range" id="strokeWidth" min="1" max="5" step="0.5" value="2.5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- テキスト用スライダー -->
+                    <div id="textSliders" class="hidden">
+                        <div class="mb-4">
+                            <label class="block text-xs font-semibold text-slate-500 mb-1">文字サイズ</label>
+                            <input type="range" id="mainTextSize" min="100" max="600" value="350" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- サブテキスト -->
+                    <div class="mt-6 pt-6 border-t border-slate-100">
+                        <div class="flex justify-between items-end mb-2">
+                            <label class="block text-xs font-semibold text-slate-500">サブタイトル / ブランド名 (任意)</label>
+                            <button id="clearTextBtn" class="text-xs text-red-500 hover:text-red-700 underline">テキストなし</button>
+                        </div>
+                        <input type="text" id="logoText" placeholder="Brand Name" class="w-full px-4 py-2 rounded border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3 text-sm">
+                        
+                        <!-- サブタイトルフォント選択 -->
+                        <label class="block text-xs font-semibold text-slate-500 mb-2">フォント</label>
+                        <div class="grid grid-cols-3 gap-2 mb-4">
+                            <button class="sub-font-btn p-2 border rounded text-xs text-center hover:bg-slate-50 truncate" style="font-family: 'Poppins', sans-serif;" onclick="setSubFont('Poppins')">Poppins</button>
+                            <button class="sub-font-btn p-2 border rounded text-xs text-center hover:bg-slate-50 truncate" style="font-family: 'Cinzel', serif;" onclick="setSubFont('Cinzel')">Cinzel</button>
+                            <button class="sub-font-btn p-2 border rounded text-xs text-center hover:bg-slate-50 truncate" style="font-family: 'Anton', sans-serif;" onclick="setSubFont('Anton')">Anton</button>
+                            <button class="sub-font-btn p-2 border rounded text-xs text-center hover:bg-slate-50 truncate" style="font-family: 'Righteous', cursive;" onclick="setSubFont('Righteous')">Righteous</button>
+                            <button class="sub-font-btn p-2 border rounded text-xs text-center hover:bg-slate-50 truncate" style="font-family: 'Pacifico', cursive;" onclick="setSubFont('Pacifico')">Pacifico</button>
+                            <button class="sub-font-btn p-2 border rounded text-xs text-center hover:bg-slate-50 truncate" style="font-family: 'Noto Sans JP', sans-serif;" onclick="setSubFont('Noto Sans JP')">Noto Sans JP</button>
+                        </div>
+
+                        <div class="flex gap-4">
+                             <div class="flex-1">
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">サイズ</label>
+                                <input type="range" id="textSize" min="20" max="150" value="60" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                             </div>
+                             <div>
+                                <label class="block text-xs font-semibold text-slate-500 mb-1">色</label>
+                                <input type="color" id="textColor" value="#ffffff" class="h-8 w-16 cursor-pointer rounded border border-slate-300">
+                             </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- 右側：プレビューエリア -->
+        <div class="w-full md:w-1/2 p-6 md:p-8 flex flex-col items-center justify-center bg-white relative">
+            <h2 class="absolute top-6 left-8 text-xs font-bold text-slate-400 uppercase tracking-wider">PREVIEW</h2>
+            
+            <!-- キャンバスのコンテナ -->
+            <div class="canvas-container p-8 rounded-xl border border-slate-200 shadow-inner mb-8 bg-slate-100">
+                <canvas id="logoCanvas" width="800" height="800" class="w-64 h-64 md:w-80 md:h-80 shadow-2xl rounded-3xl cursor-pointer hover:scale-[1.02] transition-transform duration-300" title="クリックしてダウンロード"></canvas>
+            </div>
+
+            <div class="flex flex-col items-center gap-3 w-full max-w-xs">
+                <button id="downloadBtn" class="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                    <i data-lucide="download" width="18"></i>
+                    <span>PNG保存</span>
+                </button>
+                <p class="text-[10px] text-slate-400">800x800px High Quality PNG</p>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="mt-8 text-slate-400 text-xs">
+        <p>Icons by Lucide & FontAwesome • Fonts by Google • Generated in Browser</p>
+    </footer>
+
+    <script>
+        // 設定
+        const canvas = document.getElementById('logoCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 状態管理
+        const state = {
+            mode: 'icon', // 'icon' or 'text'
+            icon: 'Lightbulb', // Lucideのキー または FontAwesomeのクラス名
+            isFa: false, // FontAwesomeかどうか
+            mainText: 'A',
+            mainFont: 'Poppins',
+            color1: '#4f46e5',
+            color2: '#ec4899',
+            angle: 135,
+            pattern: 'none',
+            iconSize: 300,
+            mainTextSize: 400,
+            strokeWidth: 2.5,
+            text: 'My Brand',
+            subFont: 'Poppins',
+            textSize: 70,
+            textColor: '#ffffff',
+            canvasSize: 800,
+            bgImgObject: null // 背景画像オブジェクト (New)
+        };
+
+        // Lucideアイコンキー
+        let lucideList = [];
+        
+        // FontAwesomeアイコンリスト
+        const faIconList = [
+            // SNS / Brands
+            { name: 'fa-brands fa-twitter', keywords: 'twitter x sns' },
+            { name: 'fa-brands fa-facebook', keywords: 'facebook sns' },
+            { name: 'fa-brands fa-instagram', keywords: 'instagram sns camera' },
+            { name: 'fa-brands fa-tiktok', keywords: 'tiktok music sns' },
+            { name: 'fa-brands fa-youtube', keywords: 'youtube video' },
+            { name: 'fa-brands fa-discord', keywords: 'discord chat' },
+            { name: 'fa-brands fa-line', keywords: 'line chat sns' },
+            { name: 'fa-brands fa-whatsapp', keywords: 'whatsapp chat' },
+            { name: 'fa-brands fa-telegram', keywords: 'telegram chat' },
+            { name: 'fa-brands fa-github', keywords: 'github code git' },
+            { name: 'fa-brands fa-google', keywords: 'google search' },
+            { name: 'fa-brands fa-apple', keywords: 'apple mac' },
+            { name: 'fa-brands fa-android', keywords: 'android robot' },
+            { name: 'fa-brands fa-windows', keywords: 'windows microsoft' },
+            { name: 'fa-brands fa-amazon', keywords: 'amazon shop' },
+            { name: 'fa-brands fa-spotify', keywords: 'spotify music' },
+            { name: 'fa-brands fa-twitch', keywords: 'twitch stream' },
+            { name: 'fa-brands fa-linkedin', keywords: 'linkedin work' },
+            { name: 'fa-brands fa-pinterest', keywords: 'pinterest image' },
+            { name: 'fa-brands fa-snapchat', keywords: 'snapchat ghost' },
+            { name: 'fa-brands fa-reddit', keywords: 'reddit news' },
+            { name: 'fa-brands fa-medium', keywords: 'medium blog' },
+            { name: 'fa-brands fa-paypal', keywords: 'paypal money' },
+            { name: 'fa-brands fa-bitcoin', keywords: 'bitcoin crypto currency' },
+            { name: 'fa-brands fa-ethereum', keywords: 'ethereum crypto' },
+            // Dev
+            { name: 'fa-brands fa-js', keywords: 'javascript js code' },
+            { name: 'fa-brands fa-react', keywords: 'react code' },
+            { name: 'fa-brands fa-vuejs', keywords: 'vue code' },
+            { name: 'fa-brands fa-angular', keywords: 'angular code' },
+            { name: 'fa-brands fa-node', keywords: 'node code' },
+            { name: 'fa-brands fa-python', keywords: 'python code' },
+            { name: 'fa-brands fa-java', keywords: 'java code' },
+            { name: 'fa-brands fa-php', keywords: 'php code' },
+            { name: 'fa-brands fa-docker', keywords: 'docker container' },
+            { name: 'fa-brands fa-aws', keywords: 'aws cloud' },
+            // Solid
+            { name: 'fa-solid fa-check', keywords: 'check tick' },
+            { name: 'fa-solid fa-heart', keywords: 'heart love solid' },
+            { name: 'fa-solid fa-star', keywords: 'star solid' },
+            { name: 'fa-solid fa-user', keywords: 'user solid' },
+            { name: 'fa-solid fa-bolt', keywords: 'bolt lightning solid' },
+            { name: 'fa-solid fa-leaf', keywords: 'leaf nature' },
+            { name: 'fa-solid fa-fire', keywords: 'fire hot' },
+            { name: 'fa-solid fa-plane', keywords: 'plane travel' },
+            { name: 'fa-solid fa-car', keywords: 'car drive' },
+            { name: 'fa-solid fa-house', keywords: 'house home' }
+        ];
+
+        // カラープリセット
+        const gradientPresets = [
+            // --- Solid Colors (単色) ---
+            ['#18181b', '#18181b'], // Rich Black
+            ['#1e293b', '#1e293b'], // Slate
+            ['#2563eb', '#2563eb'], // Blue
+            ['#dc2626', '#dc2626'], // Red
+            ['#16a34a', '#16a34a'], // Green
+            ['#d97706', '#d97706'], // Amber
+            ['#9333ea', '#9333ea'], // Purple
+            ['#db2777', '#db2777'], // Pink
+            
+            // --- Vivid & Tech Gradients ---
+            ['#4f46e5', '#ec4899'], // Indigo Pink
+            ['#2563eb', '#06b6d4'], // Blue Cyan
+            ['#7928CA', '#FF0080'], // Purple Magenta
+            ['#007CF0', '#00DFD8'], // Blue Teal
+            ['#FF4D4D', '#F9CB28'], // Red Yellow
+            ['#FF0080', '#7928CA'], // Pink Purple
+            ['#12c2e9', '#c471ed'], // Blue Purple
+            ['#159957', '#155799'], // Green Blue
+            
+            // --- Deep & Elegant ---
+            ['#0f172a', '#334155'], // Dark Slate
+            ['#1a1a1a', '#434343'], // Jet Black
+            ['#232526', '#414345'], // Deep Grey
+            ['#0f2027', '#203a43'], // Midnight
+            ['#20002c', '#cbb4d4'], // Deep Purple
+            ['#000428', '#004e92'], // Midnight Blue
+            ['#16222A', '#3A6073'], // Dark Teal
+            ['#191654', '#43C6AC'], // Deep Ocean
+
+            // --- Bright & Pop ---
+            ['#FDC830', '#F37335'], // Orange Yellow
+            ['#f2709c', '#ff9472'], // Salmon Pink
+            ['#a8ff78', '#78ffd6'], // Lime Teal
+            ['#00c6ff', '#0072ff'], // Bright Blue
+            ['#fe8c00', '#f83600'], // Orange Red
+            ['#8E2DE2', '#4A00E0'], // Violet
+            ['#fc4a1a', '#f7b733'], // Red Orange
+            ['#cac531', '#f3f9a7'], // Acid Green
+
+            // --- Pastel & Soft ---
+            ['#a18cd1', '#fbc2eb'], // Lavender
+            ['#fad0c4', '#ffd1ff'], // Soft Pink
+            ['#ff9a9e', '#fecfef'], // Peach
+            ['#a1c4fd', '#c2e9fb'], // Baby Blue
+            ['#d4fc79', '#96e6a1'], // Soft Green
+            ['#84fab0', '#8fd3f4'], // Mint Blue
+            ['#e0c3fc', '#8ec5fc'], // Pale Purple
+            ['#fccb90', '#d57eeb'], // Sunset Pastel
+            
+            // --- Corporate / Clean ---
+            ['#2980B9', '#6DD5FA'], // Professional Blue
+            ['#11998e', '#38ef7d'], // Clean Green
+            ['#8360c3', '#2ebf91'], // Purple Green
+            ['#00b09b', '#96c93d'], // Greenish
+            ['#800080', '#ffc0cb'], // Purple Pink
+            ['#333333', '#dd1818'], // Black Red
+            ['#4568DC', '#B06AB3'], // Blue Violet
+            ['#C33764', '#1D2671']  // Pink Navy
+        ];
+
+        function init() {
+            if (typeof lucide !== 'undefined' && lucide.icons) {
+                lucideList = Object.keys(lucide.icons);
+            } else {
+                lucideList = ['Lightbulb', 'Star', 'Heart', 'Zap', 'Smile'];
+            }
+            
+            const totalIcons = lucideList.length + faIconList.length;
+            document.getElementById('iconCount').innerText = `${totalIcons} icons available`;
+
+            renderIconGrid(); 
+            renderGradientPresets();
+            setupEventListeners();
+            lucide.createIcons();
+            
+            setTimeout(drawCanvas, 800); 
+            
+            updateModeUI();
+            
+            document.querySelectorAll('.pattern-btn')[0].classList.add('selected-btn');
+            document.querySelectorAll('.font-btn')[0].classList.add('selected-btn');
+            document.querySelectorAll('.sub-font-btn')[0].classList.add('selected-btn');
+        }
+
+        function switchMode(mode) {
+            state.mode = mode;
+            updateModeUI();
+            drawCanvas();
+        }
+
+        function updateModeUI() {
+            const isIcon = state.mode === 'icon';
+            const tabIcon = document.getElementById('tabIcon');
+            const tabText = document.getElementById('tabText');
+            
+            if (isIcon) {
+                tabIcon.className = "flex-1 py-4 text-center font-bold text-sm uppercase tracking-wider hover:bg-slate-50 border-b-2 border-blue-600 text-blue-600 transition-colors";
+                tabText.className = "flex-1 py-4 text-center font-bold text-sm uppercase tracking-wider hover:bg-slate-50 border-b-2 border-transparent text-slate-400 transition-colors";
+                
+                document.getElementById('modeIconContent').classList.remove('hidden');
+                document.getElementById('modeTextContent').classList.add('hidden');
+                document.getElementById('iconSliders').classList.remove('hidden');
+                document.getElementById('textSliders').classList.add('hidden');
+            } else {
+                tabIcon.className = "flex-1 py-4 text-center font-bold text-sm uppercase tracking-wider hover:bg-slate-50 border-b-2 border-transparent text-slate-400 transition-colors";
+                tabText.className = "flex-1 py-4 text-center font-bold text-sm uppercase tracking-wider hover:bg-slate-50 border-b-2 border-blue-600 text-blue-600 transition-colors";
+                
+                document.getElementById('modeIconContent').classList.add('hidden');
+                document.getElementById('modeTextContent').classList.remove('hidden');
+                document.getElementById('iconSliders').classList.add('hidden');
+                document.getElementById('textSliders').classList.remove('hidden');
+            }
+        }
+
+        function setFont(fontName) {
+            state.mainFont = fontName;
+            updateBtnSelection('.font-btn', fontName);
+            drawCanvas();
+        }
+        
+        function setSubFont(fontName) {
+            state.subFont = fontName;
+            updateBtnSelection('.sub-font-btn', fontName);
+            drawCanvas();
+        }
+
+        function setPattern(patternName) {
+            state.pattern = patternName;
+            document.querySelectorAll('.pattern-btn').forEach(btn => {
+                if (btn.getAttribute('onclick').includes(patternName)) {
+                    btn.classList.add('selected-btn');
+                } else {
+                    btn.classList.remove('selected-btn');
+                }
+            });
+            drawCanvas();
+        }
+
+        function updateBtnSelection(selector, value) {
+            document.querySelectorAll(selector).forEach(btn => {
+                if (btn.innerText.includes(value) || btn.style.fontFamily.includes(value)) {
+                    btn.classList.add('selected-btn');
+                } else {
+                    btn.classList.remove('selected-btn');
+                }
+            });
+        }
+
+        function renderIconGrid(filterText = '') {
+            const grid = document.getElementById('iconGrid');
+            grid.innerHTML = '';
+            
+            const lowerFilter = filterText.toLowerCase();
+
+            const filteredFa = faIconList.filter(item => {
+                if(!filterText) return true;
+                return item.name.includes(lowerFilter) || (item.keywords && item.keywords.includes(lowerFilter));
+            });
+
+            const filteredLucide = filterText 
+                ? lucideList.filter(name => name.toLowerCase().includes(lowerFilter))
+                : lucideList;
+
+            const maxItems = 300;
+            let count = 0;
+            
+            const fragment = document.createDocumentFragment();
+
+            for (const item of filteredFa) {
+                if (count >= maxItems) break;
+                
+                const btn = document.createElement('button');
+                const isSelected = state.isFa && state.icon === item.name;
+                btn.className = `p-2 rounded-lg border-2 hover:bg-blue-50 transition-colors flex items-center justify-center ${isSelected ? 'selected-btn' : 'border-slate-100 text-slate-500'}`;
+                btn.title = item.name.replace('fa-brands fa-', '').replace('fa-solid fa-', '');
+                btn.innerHTML = `<i class="${item.name} text-xl"></i>`;
+                
+                btn.onclick = () => {
+                    grid.querySelectorAll('button').forEach(b => {
+                        b.classList.remove('selected-btn');
+                        b.classList.add('border-slate-100', 'text-slate-500');
+                    });
+                    btn.classList.remove('border-slate-100', 'text-slate-500');
+                    btn.classList.add('selected-btn');
+                    
+                    state.icon = item.name;
+                    state.isFa = true; 
+                    drawCanvas();
+                };
+                fragment.appendChild(btn);
+                count++;
+            }
+
+            for (const iconName of filteredLucide) {
+                if (count >= maxItems) break;
+
+                const btn = document.createElement('button');
+                const isSelected = !state.isFa && state.icon === iconName;
+                btn.className = `p-2 rounded-lg border-2 hover:bg-blue-50 transition-colors flex items-center justify-center ${isSelected ? 'selected-btn' : 'border-slate-100 text-slate-500'}`;
+                btn.title = iconName;
+                
+                const kebabName = iconName.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+                btn.innerHTML = `<i data-lucide="${kebabName}" width="24" height="24"></i>`;
+                
+                btn.onclick = () => {
+                    grid.querySelectorAll('button').forEach(b => {
+                        b.classList.remove('selected-btn');
+                        b.classList.add('border-slate-100', 'text-slate-500');
+                    });
+                    btn.classList.remove('border-slate-100', 'text-slate-500');
+                    btn.classList.add('selected-btn');
+                    
+                    state.icon = iconName;
+                    state.isFa = false;
+                    drawCanvas();
+                };
+                fragment.appendChild(btn);
+                count++;
+            }
+
+            if (count === 0) {
+                grid.innerHTML = '<div class="col-span-5 text-center text-xs text-slate-400 py-8">該当するアイコンがありません</div>';
+                return;
+            }
+
+            grid.appendChild(fragment);
+            lucide.createIcons({ root: grid });
+        }
+
+        function renderGradientPresets() {
+            const container = document.getElementById('gradientPresets');
+            gradientPresets.forEach(([c1, c2, c3]) => {
+                const btn = document.createElement('button');
+                btn.className = 'w-8 h-8 rounded-full border border-slate-200 shadow-sm hover:scale-110 transition-transform focus:outline-none';
+                btn.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
+                btn.title = `${c1} -> ${c2}`;
+                btn.onclick = () => {
+                    state.color1 = c1;
+                    state.color2 = c2;
+                    document.getElementById('color1').value = c1;
+                    document.getElementById('color2').value = c2;
+                    // 背景画像がある場合はアラートなどは出さず、単に再描画で画像が優先されるが、
+                    // UIとしては画像をクリアするか確認してもいいかもしれない。ここではシンプルに。
+                    drawCanvas();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function setupEventListeners() {
+            const bindInput = (id, key, type = 'value') => {
+                const el = document.getElementById(id);
+                el.addEventListener('input', (e) => {
+                    state[key] = type === 'number' ? parseInt(e.target.value) : e.target.value;
+                    drawCanvas();
+                });
+            };
+
+            bindInput('color1', 'color1');
+            bindInput('color2', 'color2');
+            bindInput('iconSize', 'iconSize', 'number');
+            bindInput('strokeWidth', 'strokeWidth', 'number');
+            bindInput('logoText', 'text');
+            bindInput('textSize', 'textSize', 'number');
+            bindInput('textColor', 'textColor');
+            bindInput('mainText', 'mainText');
+            bindInput('mainTextSize', 'mainTextSize', 'number');
+
+            document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+            document.getElementById('logoCanvas').addEventListener('click', downloadImage);
+            
+            document.getElementById('clearTextBtn').addEventListener('click', () => {
+                state.text = '';
+                document.getElementById('logoText').value = '';
+                drawCanvas();
+            });
+
+            document.getElementById('iconSearch').addEventListener('input', (e) => {
+                renderIconGrid(e.target.value);
+            });
+
+            // 背景画像アップロード処理
+            const bgInput = document.getElementById('bgImageInput');
+            const removeBgBtn = document.getElementById('removeBgImageBtn');
+            
+            bgInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const img = new Image();
+                    img.onload = function() {
+                        state.bgImgObject = img;
+                        removeBgBtn.classList.remove('hidden');
+                        drawCanvas();
+                    };
+                    img.src = evt.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            removeBgBtn.addEventListener('click', () => {
+                state.bgImgObject = null;
+                bgInput.value = '';
+                removeBgBtn.classList.add('hidden');
+                drawCanvas();
+            });
+        }
+
+        function getFaUnicode(className) {
+            const helper = document.getElementById('fa-helper');
+            helper.className = className;
+            const style = window.getComputedStyle(helper, '::before');
+            const content = style.content;
+            if (content && content !== 'none') {
+                return content.replace(/['"]/g, '');
+            }
+            return '';
+        }
+
+        // --- 描画ロジック (大幅修正: 完全中央揃え対応 & 背景画像対応) ---
+
+        function drawCanvas() {
+            ctx.clearRect(0, 0, state.canvasSize, state.canvasSize);
+
+            // 1. 背景（角丸クリッピング）
+            const radius = 160;
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(0, 0, state.canvasSize, state.canvasSize, radius);
+            ctx.clip();
+
+            // 背景描画: 画像優先、なければグラデーション
+            if (state.bgImgObject) {
+                drawCover(ctx, state.bgImgObject, state.canvasSize, state.canvasSize);
+            } else {
+                const gradient = createGradient(ctx, state.canvasSize, state.canvasSize, state.angle, state.color1, state.color2);
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, state.canvasSize, state.canvasSize);
+            }
+
+            // パターンオーバーレイ
+            if (state.pattern !== 'none') {
+                drawPattern(ctx, state.pattern, state.canvasSize);
+            }
+            ctx.restore(); 
+
+            // 2. コンテンツ配置計算 (完全中央揃えロジック)
+            const hasSubText = state.text && state.text.trim() !== '';
+            
+            // 各要素の高さ見積もり
+            const contentMainHeight = state.mode === 'icon' ? state.iconSize : state.mainTextSize * 0.75; // テキストはベースライン等の関係で少し小さめに見積もる
+            const gap = hasSubText ? state.textSize * 0.5 : 0; // メイン要素とサブテキストの間隔
+            const subTextHeight = hasSubText ? state.textSize : 0;
+
+            // 全体の高さ
+            const totalContentHeight = contentMainHeight + gap + subTextHeight;
+
+            // 描画開始Y座標 (Top)
+            const startY = (state.canvasSize - totalContentHeight) / 2;
+
+            // メイン要素の中心Y
+            const mainCenterY = startY + (contentMainHeight / 2);
+            
+            // サブテキストのY座標 (Middle Baseline)
+            // startY + contentMainHeight + gap + (subTextHeight / 2)
+            const subTextY = startY + contentMainHeight + gap + (subTextHeight / 2);
+
+            // 3. 描画実行
+            if (state.mode === 'icon') {
+                if (state.isFa) {
+                    drawFaIcon(ctx, mainCenterY);
+                } else {
+                    drawLucideIcon(ctx, mainCenterY);
+                }
+            } else {
+                drawMainText(ctx, mainCenterY);
+            }
+
+            if (hasSubText) {
+                drawSubText(ctx, subTextY);
+            }
+        }
+
+        // 背景画像をCover（アスペクト比維持・中央トリミング）で描画するヘルパー
+        function drawCover(ctx, img, w, h) {
+            const imgRatio = img.width / img.height;
+            const canvasRatio = w / h;
+            let dw, dh, dx, dy;
+
+            if (imgRatio > canvasRatio) {
+                // 画像が横長
+                dh = h;
+                dw = h * imgRatio;
+                dx = (w - dw) / 2;
+                dy = 0;
+            } else {
+                // 画像が縦長
+                dw = w;
+                dh = w / imgRatio;
+                dx = 0;
+                dy = (h - dh) / 2;
+            }
+            ctx.drawImage(img, dx, dy, dw, dh);
+        }
+
+        function createGradient(ctx, w, h, angle, color1, color2) {
+            const rad = (angle - 90) * (Math.PI / 180);
+            const length = Math.abs(w * Math.sin(rad)) + Math.abs(h * Math.cos(rad));
+            const x1 = w / 2 - (length / 2) * Math.cos(rad);
+            const y1 = h / 2 - (length / 2) * Math.sin(rad);
+            const x2 = w / 2 + (length / 2) * Math.cos(rad);
+            const y2 = h / 2 + (length / 2) * Math.sin(rad);
+            const grd = ctx.createLinearGradient(x1, y1, x2, y2);
+            grd.addColorStop(0, color1);
+            grd.addColorStop(1, color2);
+            return grd;
+        }
+
+        function drawPattern(ctx, type, size) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'overlay'; 
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'; 
+
+            if (type === 'dots') {
+                for(let i=0; i<size; i+=20) {
+                    for(let j=0; j<size; j+=20) {
+                        ctx.beginPath();
+                        ctx.arc(i, j, 2, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+            } else if (type === 'grid') {
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                for(let i=0; i<size; i+=40) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0); ctx.lineTo(i, size);
+                    ctx.moveTo(0, i); ctx.lineTo(size, i);
+                    ctx.stroke();
+                }
+            } else if (type === 'lines') {
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                for(let i=-size; i<size*2; i+=20) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i + size, size);
+                    ctx.stroke();
+                }
+            } else if (type === 'polka') {
+                 for(let i=0; i<size; i+=40) {
+                    for(let j=0; j<size; j+=40) {
+                        ctx.beginPath();
+                        ctx.arc(i + ((j/40)%2)*20, j, 6, 0, Math.PI*2); 
+                        ctx.fill();
+                    }
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawLucideIcon(ctx, centerY) {
+            const iconData = lucide.icons[state.icon];
+            if (!iconData) return;
+
+            const svgContent = buildSvgString(iconData, {
+                width: state.iconSize,
+                height: state.iconSize,
+                stroke: 'white',
+                'stroke-width': state.strokeWidth
+            });
+
+            const img = new Image();
+            const svgBlob = new Blob([svgContent], {type: 'image/svg+xml;charset=utf-8'});
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = function() {
+                const x = (state.canvasSize - state.iconSize) / 2;
+                const y = centerY - (state.iconSize / 2);
+                ctx.shadowColor = "rgba(0,0,0,0.2)";
+                ctx.shadowBlur = 15;
+                ctx.shadowOffsetY = 8;
+                ctx.drawImage(img, x, y, state.iconSize, state.iconSize);
+                ctx.shadowColor = "transparent";
+                URL.revokeObjectURL(url);
+            };
+            img.src = url;
+        }
+
+        function drawFaIcon(ctx, centerY) {
+            const unicode = getFaUnicode(state.icon);
+            if (!unicode) return;
+
+            ctx.save();
+            ctx.fillStyle = 'white';
+            
+            let fontFamily = '"Font Awesome 6 Free"';
+            let fontWeight = '900'; 
+            
+            if (state.icon.includes('fa-brands')) {
+                fontFamily = '"Font Awesome 6 Brands"';
+                fontWeight = '400';
+            } else if (state.icon.includes('fa-regular')) {
+                fontWeight = '400';
+            }
+
+            ctx.font = `${fontWeight} ${state.iconSize}px ${fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            ctx.shadowColor = "rgba(0,0,0,0.2)";
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 8;
+
+            ctx.fillText(unicode, state.canvasSize / 2, centerY);
+            ctx.restore();
+        }
+
+        function drawMainText(ctx, centerY) {
+            if (!state.mainText) return;
+
+            ctx.save();
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${state.mainTextSize}px '${state.mainFont}', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            ctx.shadowColor = "rgba(0,0,0,0.2)";
+            ctx.shadowBlur = 15;
+            ctx.shadowOffsetY = 8;
+
+            ctx.fillText(state.mainText, state.canvasSize / 2, centerY);
+            ctx.restore();
+        }
+
+        function drawSubText(ctx, textY) { // 引数を変更: 算出済みのY座標を直接使う
+            if (!state.text) return;
+
+            ctx.fillStyle = state.textColor;
+            ctx.font = `bold ${state.textSize}px '${state.subFont}', sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            ctx.shadowColor = "rgba(0,0,0,0.2)";
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 5;
+
+            ctx.fillText(state.text, state.canvasSize / 2, textY);
+            ctx.shadowColor = "transparent";
+        }
+
+        function buildSvgString(iconData, attrs) {
+            if (typeof iconData.toSvg === 'function') {
+                return iconData.toSvg(attrs);
+            } 
+            const attributes = Object.entries(attrs).map(([key, value]) => `${key}="${value}"`).join(' ');
+            const baseAttrs = `xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+            let innerContent = '';
+            if (Array.isArray(iconData)) {
+                 innerContent = iconData.map(([tag, tagAttrs]) => {
+                    const tAttrs = Object.entries(tagAttrs).map(([k, v]) => `${k}="${v}"`).join(' ');
+                    return `<${tag} ${tAttrs} />`;
+                }).join('');
+            }
+            return `<svg ${baseAttrs} ${attributes}>${innerContent}</svg>`;
+        }
+
+        function downloadImage() {
+            const link = document.createElement('a');
+            const prefix = state.mode === 'icon' 
+                ? (state.isFa ? 'fa-icon' : state.icon.toLowerCase()) 
+                : 'text';
+            link.download = `logo-${prefix}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+
+        init();
+    </script>
+</body>
+</html>
