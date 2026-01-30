@@ -415,10 +415,14 @@
                                 <select id="item-genre-select" required class="custom-input w-full px-3 py-2 rounded-lg text-xs appearance-none"></select>
                             </div>
                             <div>
-                                <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">評価</label>
-                                <div class="flex items-center h-[34px] px-1 star-rating" id="modal-rating-input"></div>
-                                <input type="hidden" id="item-rating" value="0" required>
+                                <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">日付</label>
+                                <input type="date" id="item-date" required class="custom-input w-full px-3 py-2 rounded-lg text-xs">
                             </div>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">評価</label>
+                            <div class="flex items-center h-[34px] px-1 star-rating" id="modal-rating-input"></div>
+                            <input type="hidden" id="item-rating" value="0" required>
                         </div>
                         <div>
                             <label class="block text-[10px] font-medium text-theme-muted mb-1 uppercase">名前</label>
@@ -782,6 +786,7 @@
             e.preventDefault();
             const itemData = {
                 genre: document.getElementById('item-genre-select').value,
+                date: document.getElementById('item-date').value, // Add Date
                 name: document.getElementById('item-name').value,
                 desc: document.getElementById('item-desc').value,
                 rating: parseInt(document.getElementById('item-rating').value) || 0,
@@ -808,7 +813,14 @@
                 
                 // If editing, refresh detail view
                 if (editingItemId) {
-                    openDetail(editingItemId);
+                    // Fetch updated item data to refresh detail view correctly
+                    const updatedItem = appData.items.find(i => i.id === editingItemId);
+                    if(updatedItem) openDetail(updatedItem.id); 
+                    // Note: fetchData() updates appData, so we just need to find the item again
+                    // However, since fetchData is async and we awaited it, appData is fresh here.
+                    // We need to re-find the item from the fresh appData.
+                    const freshItem = appData.items.find(i => i.id === editingItemId);
+                    if(freshItem) openDetail(freshItem.id);
                 }
 
                 if (currentGenre && currentGenre === itemData.genre) {
@@ -841,7 +853,7 @@
 
             document.getElementById('detail-name').textContent = item.name;
             document.getElementById('detail-genre').textContent = item.genre;
-            document.getElementById('detail-date').textContent = item.date;
+            document.getElementById('detail-date').textContent = item.date; // Date is already formatted from API
             document.getElementById('detail-desc').textContent = item.desc;
             document.getElementById('detail-stars').innerHTML = generateStars(item.rating || 0, 'w-5 h-5');
             document.getElementById('detail-rating-text').textContent = `${item.rating || 0} / 6`;
@@ -869,6 +881,9 @@
         // --- Helper: Forms & Modals ---
         function resetForm() {
             document.getElementById('item-form').reset();
+            // Set default date to today
+            document.getElementById('item-date').valueAsDate = new Date();
+            
             tempImageBase64 = null;
             document.getElementById('image-preview-container').innerHTML = `<i data-feather="image" class="w-5 h-5 mb-1"></i><span class="text-[10px]">画像を選択</span>`;
             resetRatingInput();
@@ -965,6 +980,14 @@
                 document.getElementById('item-name').value = item.name;
                 document.getElementById('item-desc').value = item.desc;
                 document.getElementById('item-rating').value = item.rating;
+                
+                // Date formatting for input (YYYY/MM/DD -> YYYY-MM-DD)
+                if(item.date) {
+                    document.getElementById('item-date').value = item.date.replace(/\//g, '-');
+                } else {
+                    document.getElementById('item-date').valueAsDate = new Date();
+                }
+
                 currentRatingInput = item.rating;
                 
                 const previewContainer = document.getElementById('image-preview-container');
@@ -979,7 +1002,7 @@
 
             document.getElementById('item-modal').classList.remove('hidden');
             setupRatingInput();
-            feather.replace(); // Reset feather for injected image icon
+            feather.replace(); 
         }
         function closeItemModal() { document.getElementById('item-modal').classList.add('hidden'); }
 
