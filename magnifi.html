@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MagniFi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', '"Noto Sans JP"', 'sans-serif'],
+                        mono: ['"SFMono-Regular"', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#152033',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',
+                        'slide-up': 'slideUp 0.5s ease-out forwards',
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            /* 背景グラデーション */
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(30, 41, 59, 0.5) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(15, 23, 42, 0.5) 0%, transparent 20%);
+            color: #ffffff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* グラスモーフィズムパネル共通 */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+        }
+
+        /* マップコンテナ */
+        #map-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            border-radius: 1rem;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: #0f172a;
+        }
+
+        /* 震度階級配色 */
+        .shindo-1 { background: linear-gradient(135deg, #586c7e, #3e4e5e); color: white; }
+        .shindo-2 { background: linear-gradient(135deg, #1f50a2, #153873); color: white; }
+        .shindo-3 { background: linear-gradient(135deg, #1a9e48, #116b30); color: white; }
+        .shindo-4 { background: linear-gradient(135deg, #f7d23a, #cfaa18); color: black; }
+        .shindo-5- { background: linear-gradient(135deg, #ff9900, #cc7a00); color: black; }
+        .shindo-5\+ { background: linear-gradient(135deg, #ff9900, #cc7a00); color: black; border: 4px solid #e64a19; }
+        .shindo-6- { background: linear-gradient(135deg, #e60012, #a6000d); color: white; }
+        .shindo-6\+ { background: linear-gradient(135deg, #a40000, #700000); color: white; }
+        .shindo-7 { background: linear-gradient(135deg, #780075, #4d004b); color: white; }
+        
+        /* アラートモード時の画面全体エフェクト */
+        .alert-mode-bg {
+            box-shadow: inset 0 0 100px rgba(220, 38, 38, 0.3);
+        }
+        .alert-active-border {
+            border-color: rgba(220, 38, 38, 0.5);
+            box-shadow: 0 0 30px rgba(220, 38, 38, 0.2);
+        }
+
+        /* カスタムスクロールバー */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="flex flex-col p-4 md:p-6 gap-4 md:gap-6 transition-all duration-500" id="body-container">
+
+    <!-- ヘッダー -->
+    <header class="flex justify-between items-center shrink-0">
+        <div class="glass-panel rounded-full px-5 py-2 flex items-center gap-4 animate-fade-in">
+            <h1 class="text-xs text-gray-400 font-bold tracking-[0.2em] uppercase">MagniFi</h1>
+            <div class="h-4 w-px bg-white/10"></div>
+            <div class="flex items-center gap-2">
+                <div id="status-indicator" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                <span id="connection-status" class="text-xs font-bold text-white tracking-wide">CONNECTING...</span>
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="clearLogs()" class="glass-panel hover:bg-white/10 text-gray-400 hover:text-white px-4 py-2 rounded-full text-xs font-bold transition-all" title="履歴を消去">
+                CLEAR LOGS
+            </button>
+            <button onclick="testSequence()" class="glass-panel hover:bg-white/10 text-white p-2.5 rounded-full transition-all active:scale-95 group relative" title="テスト発報">
+                <svg class="w-4 h-4 text-gray-300 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                <div class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">通常→最終→取消</div>
+            </button>
+            <button id="audio-btn" onclick="enableAudio()" class="glass-panel hover:bg-white/10 text-white p-2.5 rounded-full transition-all active:scale-95 group relative" title="音声切り替え">
+                <div id="audio-status-dot" class="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full border border-slate-900 hidden"></div>
+                <svg id="audio-icon" class="w-4 h-4 text-gray-300 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- メイングリッド -->
+    <main class="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 min-h-0">
+        
+        <!-- 左カラム：メイン情報パネル (lg:col-span-7) -->
+        <div class="lg:col-span-7 flex flex-col gap-4 min-h-0">
+            <!-- アラート表示エリア (常に表示、待機時はStandbyモード) -->
+            <div id="main-panel" class="glass-panel rounded-3xl flex-grow flex flex-col relative overflow-hidden transition-all duration-300">
+                
+                <!-- 待機画面 -->
+                <div id="standby-view" class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-500">
+                    <div class="w-24 h-24 rounded-full bg-white/5 flex items-center justify-center mb-6 animate-pulse">
+                        <svg class="w-10 h-10 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div class="text-4xl font-black text-white/20 tracking-[0.2em]">MONITORING</div>
+                    <div class="text-sm text-gray-500 font-mono mt-2 tracking-wider">WAITING FOR EEW DATA...</div>
+                </div>
+
+                <!-- アラート画面 (初期状態はhidden) -->
+                <div id="alert-view" class="flex-grow flex flex-col opacity-0 transition-opacity duration-300 pointer-events-none">
+                    <!-- アラートヘッダー -->
+                    <div id="alert-header-bg" class="bg-red-600 px-6 py-4 flex justify-between items-center transition-colors duration-500">
+                        <div class="flex items-center gap-3">
+                            <span class="animate-pulse-fast w-3 h-3 bg-white rounded-full block"></span>
+                            <span id="alert-title" class="font-bold text-white tracking-wider text-xl">緊急地震速報（予報）</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span id="is-final-badge" class="hidden px-2 py-1 bg-pink-600/30 text-pink-200 text-xs rounded border border-pink-500/50 font-bold shadow-[0_0_15px_rgba(236,72,153,0.4)] animate-pulse">最終報</span>
+                            <span id="alert-serial" class="bg-white/20 px-3 py-1 rounded text-sm font-mono font-bold text-white"># --</span>
+                        </div>
+                    </div>
+
+                    <!-- アラートコンテンツ -->
+                    <div class="p-6 md:p-10 flex-grow flex flex-col justify-center relative">
+                        <!-- 背景装飾 -->
+                        <div class="absolute top-10 right-10 w-64 h-64 bg-red-500/10 rounded-full blur-3xl pointer-events-none transition-colors duration-500" id="bg-decoration"></div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-center z-10">
+                            <!-- 震度 -->
+                            <div class="md:col-span-5 flex flex-col items-center justify-center text-center">
+                                <div class="text-xs text-gray-400 font-bold mb-3 tracking-widest uppercase">Max Intensity</div>
+                                <div id="max-intensity" class="text-8xl font-black shindo-4 w-48 h-48 flex items-center justify-center rounded-3xl shadow-2xl relative transition-all duration-300">
+                                    -
+                                    <div id="intensity-pulse" class="absolute inset-0 bg-white/10 rounded-3xl animate-ping-slow -z-10"></div>
+                                </div>
+                            </div>
+
+                            <!-- 詳細 -->
+                            <div class="md:col-span-7 space-y-6">
+                                <div>
+                                    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Epicenter</div>
+                                    <div id="epicenter" class="text-4xl md:text-5xl font-black text-white leading-tight tracking-tight">---</div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div class="bg-white/5 rounded-xl p-4 border border-white/5">
+                                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Magnitude</div>
+                                        <div class="flex items-baseline gap-1">
+                                            <span class="text-lg text-yellow-500 font-bold">M</span>
+                                            <span id="magnitude" class="text-4xl font-bold text-white font-mono">---</span>
+                                        </div>
+                                    </div>
+                                    <div class="bg-white/5 rounded-xl p-4 border border-white/5">
+                                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Depth</div>
+                                        <div class="flex items-baseline gap-1">
+                                            <span id="depth" class="text-4xl font-bold text-white font-mono">---</span>
+                                            <span class="text-sm text-gray-400 font-bold">km</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-between items-end border-t border-white/10 pt-4">
+                                    <div>
+                                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Origin Time</div>
+                                        <div id="origin-time" class="text-xl font-mono text-white">--:--:--</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右カラム：地図 & ログ (lg:col-span-5) -->
+        <div class="lg:col-span-5 flex flex-col gap-4 min-h-0">
+            
+            <!-- マップカード (高さ固定または可変) -->
+            <div class="glass-panel rounded-3xl p-1 h-[400px] lg:h-auto lg:flex-grow flex flex-col">
+                <div id="map-container">
+                    <div id="map"></div>
+                </div>
+            </div>
+
+            <!-- ログカード -->
+            <div class="glass-panel rounded-3xl flex flex-col h-64 lg:h-72 overflow-hidden shrink-0">
+                <div class="bg-slate-900/50 px-5 py-3 border-b border-white/5 flex justify-between items-center shrink-0">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="text-xs font-bold text-gray-300 uppercase tracking-wider">History Log</span>
+                    </div>
+                    <span id="log-count" class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-400">0</span>
+                </div>
+                <div id="log-container" class="p-2 overflow-y-auto custom-scrollbar flex-grow space-y-1">
+                    <!-- ログアイテムがここに追加されます -->
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // --- 設定・変数 ---
+        const WS_URL = 'wss://ws-api.wolfx.jp/jma_eew';
+        const STORAGE_KEY = 'wolfx_eew_logs_v1';
+        let socket = null;
+        let map = null;
+        let earthquakeMarker = null;
+        let isAudioEnabled = false;
+        
+        // テスト用ステート管理
+        let testState = 0; // 0:Idle, 1:Normal, 2:Final, 3:Cancel
+
+        // --- DOM Elements ---
+        const els = {
+            body: document.getElementById('body-container'),
+            status: document.getElementById('connection-status'),
+            statusIndicator: document.getElementById('status-indicator'),
+            mainPanel: document.getElementById('main-panel'),
+            standbyView: document.getElementById('standby-view'),
+            alertView: document.getElementById('alert-view'),
+            alertTitle: document.getElementById('alert-title'),
+            alertSerial: document.getElementById('alert-serial'),
+            alertHeaderBg: document.getElementById('alert-header-bg'),
+            bgDecoration: document.getElementById('bg-decoration'),
+            maxIntensity: document.getElementById('max-intensity'),
+            intensityPulse: document.getElementById('intensity-pulse'),
+            epicenter: document.getElementById('epicenter'),
+            magnitude: document.getElementById('magnitude'),
+            depth: document.getElementById('depth'),
+            originTime: document.getElementById('origin-time'),
+            isFinalBadge: document.getElementById('is-final-badge'),
+            logContainer: document.getElementById('log-container'),
+            logCount: document.getElementById('log-count'),
+            audioBtn: document.getElementById('audio-btn'),
+            audioIcon: document.getElementById('audio-icon'),
+            audioStatusDot: document.getElementById('audio-status-dot')
+        };
+
+        // --- 初期化 ---
+        window.onload = () => {
+            initMap();
+            loadLogs(); // 履歴読み込み
+            connectWebSocket();
+            addLog('システムを起動しました', 'system');
+        };
+
+        // --- マップ初期化 ---
+        function initMap() {
+            map = L.map('map', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([36.5, 138], 5);
+
+            // ダークテーマタイル
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: 'Map data &copy; OSM contributors',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            map.zoomControl.setPosition('bottomright');
+        }
+
+        // --- WebSocket ---
+        function connectWebSocket() {
+            addLog('サーバーへ接続中...', 'system');
+            socket = new WebSocket(WS_URL);
+
+            socket.onopen = () => {
+                setConnectionStatus(true);
+                addLog('接続確立 (ws-api.wolfx.jp)', 'success');
+            };
+
+            socket.onclose = () => {
+                setConnectionStatus(false);
+                addLog('切断されました。3秒後に再接続します...', 'error');
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            socket.onerror = (err) => {
+                console.error('WS Error:', err);
+                addLog('接続エラー発生', 'error');
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'jma_eew') {
+                        handleEEW(data);
+                    }
+                } catch (e) { console.error(e); }
+            };
+        }
+
+        function setConnectionStatus(isConnected) {
+            if (isConnected) {
+                els.status.textContent = 'ONLINE';
+                els.status.className = 'text-xs font-bold text-emerald-400 tracking-wide';
+                els.statusIndicator.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]';
+            } else {
+                els.status.textContent = 'OFFLINE';
+                els.status.className = 'text-xs font-bold text-red-500 tracking-wide';
+                els.statusIndicator.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse';
+            }
+        }
+
+        // --- EEW処理 ---
+        function handleEEW(data) {
+            const isCancel = data.isCancel === true;
+            const isFinal = data.isFinal === true;
+
+            // アラート表示モードへ切り替え
+            els.standbyView.classList.add('opacity-0', 'pointer-events-none');
+            els.alertView.classList.remove('opacity-0', 'pointer-events-none');
+            
+            if (!isCancel) {
+                // キャンセルでない場合
+                
+                // 1. デザインリセット（キャンセル状態からの復帰など）
+                els.mainPanel.classList.add('alert-active-border');
+                els.body.classList.add('alert-mode-bg');
+                els.alertHeaderBg.className = 'bg-red-600 px-6 py-4 flex justify-between items-center transition-colors duration-500';
+                els.bgDecoration.classList.remove('bg-gray-500/10');
+                els.bgDecoration.classList.add('bg-red-500/10');
+                els.intensityPulse.classList.remove('hidden');
+
+                // 2. データ反映
+                els.alertTitle.textContent = data.Title || '緊急地震速報';
+                els.alertSerial.textContent = `# ${data.Serial || '-'}`;
+                els.epicenter.textContent = data.Hypocenter || '---';
+                els.magnitude.textContent = data.Magitude || '-.-';
+                els.depth.textContent = (data.Depth || '-').replace('km', '');
+                els.originTime.textContent = (data.AnnouncedTime || '').split('T')[1]?.split('+')[0] || '--:--:--';
+                
+                // 3. 最終報の処理
+                if (isFinal) {
+                    els.isFinalBadge.classList.remove('hidden');
+                    // 最終報はバッジを強調
+                    els.isFinalBadge.className = 'px-2 py-1 bg-pink-600/30 text-pink-200 text-xs rounded border border-pink-500/50 font-bold shadow-[0_0_15px_rgba(236,72,153,0.4)] animate-pulse';
+                } else {
+                    els.isFinalBadge.classList.add('hidden');
+                }
+
+                // 4. 震度スタイル更新
+                updateIntensityStyle(data.MaxIntensity);
+                
+                // 5. マップ更新
+                if (data.Latitude && data.Longitude) {
+                    updateMap(data.Latitude, data.Longitude, data.Hypocenter);
+                }
+
+                // 6. ログ & 音声
+                const statusLabel = isFinal ? '[最終報]' : `[第${data.Serial}報]`;
+                const logType = isFinal ? 'alert-final' : 'alert';
+                const logMsg = `${statusLabel} ${data.Hypocenter} 最大震度${data.MaxIntensity}`;
+                
+                addLog(logMsg, logType);
+                
+                // 音声文言
+                const speakIntro = isFinal ? "緊急地震速報、最終報。" : "緊急地震速報。";
+                speak(`${speakIntro}${data.Hypocenter}で地震。最大震度${data.MaxIntensity}。マグニチュード${data.Magitude}。`);
+
+            } else {
+                // キャンセル報の場合
+                renderCancel(data.Serial);
+            }
+        }
+
+        function renderCancel(serial) {
+            // 1. スタイルを沈静化（グレー）に
+            els.mainPanel.classList.remove('alert-active-border');
+            els.body.classList.remove('alert-mode-bg');
+            
+            els.alertHeaderBg.className = 'bg-slate-600 px-6 py-4 flex justify-between items-center transition-colors duration-500';
+            els.alertTitle.textContent = '緊急地震速報（取消）';
+            
+            // 2. 詳細情報のクリア・リセット
+            els.maxIntensity.className = 'text-8xl font-black bg-slate-700 text-gray-500 w-48 h-48 flex items-center justify-center rounded-3xl relative transition-all duration-300';
+            els.maxIntensity.textContent = '-';
+            
+            els.intensityPulse.classList.add('hidden'); // パルス停止
+            els.bgDecoration.classList.remove('bg-red-500/10'); // 背景赤削除
+            els.bgDecoration.classList.add('bg-gray-500/10');
+            
+            els.epicenter.textContent = '情報は取り消されました';
+            els.magnitude.textContent = '-.-';
+            els.depth.textContent = '---';
+            els.originTime.textContent = '--:--:--';
+            
+            els.isFinalBadge.classList.add('hidden');
+
+            // 3. マップのマーカー消去
+            if (earthquakeMarker) {
+                map.removeLayer(earthquakeMarker);
+                earthquakeMarker = null;
+            }
+
+            // 4. ログ & 音声
+            addLog(`[第${serial}報] この緊急地震速報は取り消されました`, 'cancel');
+            speak("先ほどの緊急地震速報は取り消されました。");
+        }
+
+        function updateIntensityStyle(intensity) {
+            let baseClass = 'text-8xl font-black w-48 h-48 flex items-center justify-center rounded-3xl shadow-2xl relative transition-all duration-300 ';
+            let colorClass = 'shindo-1';
+
+            if (intensity === '1') colorClass = 'shindo-1';
+            else if (intensity === '2') colorClass = 'shindo-2';
+            else if (intensity === '3') colorClass = 'shindo-3';
+            else if (intensity === '4') colorClass = 'shindo-4';
+            else if (intensity.includes('5弱') || intensity.includes('5-')) colorClass = 'shindo-5-';
+            else if (intensity.includes('5強') || intensity.includes('5+')) colorClass = 'shindo-5\+';
+            else if (intensity.includes('6弱') || intensity.includes('6-')) colorClass = 'shindo-6-';
+            else if (intensity.includes('6強') || intensity.includes('6+')) colorClass = 'shindo-6\+';
+            else if (intensity === '7') colorClass = 'shindo-7';
+
+            els.maxIntensity.className = baseClass + colorClass;
+            els.maxIntensity.textContent = intensity;
+        }
+
+        function updateMap(lat, lon, text) {
+            if (earthquakeMarker) map.removeLayer(earthquakeMarker);
+
+            // アニメーションアイコン
+            const rippleIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="position:relative; width:60px; height:60px; left:-30px; top:-30px;">
+                        <div style="position:absolute; inset:0; border: 3px solid #ef4444; border-radius:50%; animation: ping 1.5s infinite;"></div>
+                        <div style="position:absolute; inset:25%; background:#ef4444; border-radius:50%; box-shadow: 0 0 15px #ef4444;"></div>
+                       </div>`,
+                iconSize: [0, 0]
+            });
+
+            earthquakeMarker = L.marker([lat, lon], { icon: rippleIcon }).addTo(map);
+            map.flyTo([lat, lon], 7, { animate: true, duration: 1.5 });
+        }
+
+        // --- ログ & localStorage 管理 ---
+        function addLog(msg, type = 'normal') {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            
+            createLogElement(timeStr, msg, type);
+
+            const logEntry = {
+                time: timeStr,
+                msg: msg,
+                type: type,
+                timestamp: now.getTime()
+            };
+            saveLogToStorage(logEntry);
+        }
+
+        function createLogElement(time, msg, type) {
+            const div = document.createElement('div');
+            
+            let colorClass = 'text-gray-300';
+            if (type === 'alert') colorClass = 'text-red-400 font-bold';
+            if (type === 'alert-final') colorClass = 'text-pink-400 font-black'; // 最終報用
+            if (type === 'success') colorClass = 'text-emerald-400';
+            if (type === 'error') colorClass = 'text-rose-400';
+            if (type === 'cancel') colorClass = 'text-gray-400 italic'; // 取消報用
+            if (type === 'system') colorClass = 'text-blue-300';
+
+            div.className = "flex items-start gap-3 p-2 rounded hover:bg-white/5 transition-colors text-xs font-mono border-l-2 border-transparent hover:border-white/20";
+            
+            // 最終報は背景少しつける
+            if (type === 'alert-final') div.classList.add('bg-pink-500/10');
+
+            div.innerHTML = `
+                <span class="opacity-40 shrink-0 select-none">${time}</span>
+                <span class="${colorClass} break-all">${msg}</span>
+            `;
+            
+            els.logContainer.prepend(div);
+            updateLogCount();
+        }
+
+        function saveLogToStorage(entry) {
+            try {
+                let logs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                logs.unshift(entry);
+                if (logs.length > 100) logs = logs.slice(0, 100);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+            } catch (e) { console.error('LocalStorage Save Error:', e); }
+        }
+
+        function loadLogs() {
+            try {
+                const logs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                logs.slice().reverse().forEach(log => {
+                    createLogElement(log.time, log.msg, log.type);
+                });
+            } catch (e) { localStorage.removeItem(STORAGE_KEY); }
+        }
+
+        function clearLogs() {
+            if(confirm('ログ履歴をすべて消去しますか？')) {
+                localStorage.removeItem(STORAGE_KEY);
+                els.logContainer.innerHTML = '';
+                addLog('ログを消去しました', 'system');
+            }
+        }
+
+        function updateLogCount() {
+            els.logCount.textContent = els.logContainer.children.length;
+        }
+
+        // --- その他 ---
+        function enableAudio() {
+            isAudioEnabled = !isAudioEnabled;
+            if (isAudioEnabled) {
+                els.audioStatusDot.classList.remove('hidden');
+                els.audioStatusDot.classList.remove('bg-red-500');
+                els.audioStatusDot.classList.add('bg-emerald-500');
+                speak('音声読み上げを有効にしました');
+            } else {
+                els.audioStatusDot.classList.add('hidden');
+            }
+        }
+
+        function speak(text) {
+            if (!isAudioEnabled) return;
+            window.speechSynthesis.cancel();
+            const uttr = new SpeechSynthesisUtterance(text);
+            uttr.lang = 'ja-JP';
+            window.speechSynthesis.speak(uttr);
+        }
+
+        // --- テストシーケンス機能 ---
+        function testSequence() {
+            testState++;
+            if (testState > 3) testState = 1;
+
+            const baseData = {
+                type: 'jma_eew',
+                Hypocenter: '南海トラフ周辺',
+                Latitude: 33.0,
+                Longitude: 136.0,
+                AnnouncedTime: new Date().toISOString()
+            };
+
+            if (testState === 1) {
+                // 第1報
+                handleEEW({
+                    ...baseData,
+                    Title: '緊急地震速報（予報）',
+                    Serial: '1',
+                    MaxIntensity: '5強',
+                    Magitude: '6.8',
+                    Depth: '10km',
+                    isFinal: false,
+                    isCancel: false
+                });
+            } else if (testState === 2) {
+                // 最終報
+                handleEEW({
+                    ...baseData,
+                    Title: '緊急地震速報（予報）',
+                    Serial: '5',
+                    MaxIntensity: '7',
+                    Magitude: '9.1',
+                    Depth: '10km',
+                    isFinal: true,
+                    isCancel: false
+                });
+            } else if (testState === 3) {
+                // 取消報
+                handleEEW({
+                    ...baseData,
+                    Serial: '6',
+                    isCancel: true
+                });
+            }
+        }
+    </script>
+</body>
+</html>
