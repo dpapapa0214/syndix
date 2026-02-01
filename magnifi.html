@@ -138,7 +138,7 @@
         <div class="glass-panel rounded-full px-5 py-2 flex items-center gap-4 animate-fade-in">
             <h1 class="text-xs text-gray-400 font-bold tracking-[0.2em] uppercase">MagniFi</h1>
             <div class="h-4 w-px bg-white/10"></div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2" id="status-container">
                 <div id="status-indicator" class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                 <span id="connection-status" class="text-xs font-bold text-white tracking-wide">CONNECTING...</span>
             </div>
@@ -243,10 +243,9 @@
         </div>
 
         <!-- 右カラム：地図 & ログ (lg:col-span-5) -->
-        <div class="lg:col-span-5 flex flex-col gap-4 min-h-0">
+        <div class="lg:col-span-5 flex flex-col gap-4 min-h-0 shrink-0">
             
             <!-- マップカード -->
-            <!-- モバイル時は固定高さ(h-80)を確保し shrink-0 で潰れを防止 -->
             <div class="glass-panel rounded-3xl p-1 h-80 md:h-[400px] lg:h-auto lg:flex-grow flex flex-col shrink-0">
                 <div id="map-container">
                     <div id="map"></div>
@@ -254,7 +253,6 @@
             </div>
 
             <!-- ログカード -->
-            <!-- モバイル時も高さを維持 -->
             <div class="glass-panel rounded-3xl flex flex-col h-64 lg:h-72 overflow-hidden shrink-0">
                 <div class="bg-slate-900/50 px-5 py-3 border-b border-white/5 flex justify-between items-center shrink-0">
                     <div class="flex items-center gap-2">
@@ -284,6 +282,12 @@
         let earthquakeMarker = null;
         let isAudioEnabled = false;
         
+        // 接続監視用 (ウォッチドッグ)
+        let watchdogInterval = null;
+        let lastMessageTime = Date.now();
+        const WATCHDOG_TIMEOUT = 60000; // 60秒間通信がないと切断とみなす
+        const WATCHDOG_CHECK_RATE = 5000; // 5秒ごとにチェック
+
         // テスト用ステート管理
         let testState = 0; // 0:Idle, 1:Normal, 2:Final, 3:Cancel
 
@@ -292,6 +296,7 @@
             body: document.getElementById('body-container'),
             status: document.getElementById('connection-status'),
             statusIndicator: document.getElementById('status-indicator'),
+            statusContainer: document.getElementById('status-container'),
             mainPanel: document.getElementById('main-panel'),
             standbyView: document.getElementById('standby-view'),
             alertView: document.getElementById('alert-view'),
@@ -318,6 +323,7 @@
             initMap();
             loadLogs(); // 履歴読み込み
             connectWebSocket();
+            startWatchdog(); // 監視開始
             addLog('システムを起動しました', 'system');
         };
 
@@ -338,13 +344,19 @@
             map.zoomControl.setPosition('bottomright');
         }
 
-        // --- WebSocket ---
+        // --- WebSocket & 接続監視 ---
         function connectWebSocket() {
+            // 既に接続中なら閉じる
+            if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+                socket.close();
+            }
+
             addLog('サーバーへ接続中...', 'system');
             socket = new WebSocket(WS_URL);
 
             socket.onopen = () => {
                 setConnectionStatus(true);
+                lastMessageTime = Date.now(); // 接続時にタイムスタンプ更新
                 addLog('接続確立 (ws-api.wolfx.jp)', 'success');
             };
 
@@ -355,18 +367,39 @@
             };
 
             socket.onerror = (err) => {
+                // エラーはログに出るが、再接続はoncloseで行う
                 console.error('WS Error:', err);
-                addLog('接続エラー発生', 'error');
             };
 
             socket.onmessage = (event) => {
+                lastMessageTime = Date.now(); // メッセージ受信時にタイムスタンプ更新
                 try {
                     const data = JSON.parse(event.data);
                     if (data.type === 'jma_eew') {
                         handleEEW(data);
+                    } else if (data.type === 'heartbeat') {
+                        // Heartbeat受信時はログに出さないが、タイムスタンプは更新される
+                        // デバッグ用にコンソール出力は残す
+                        // console.log('Heartbeat received');
                     }
                 } catch (e) { console.error(e); }
             };
+        }
+
+        // ウォッチドッグタイマー：定期的に通信状態を確認
+        function startWatchdog() {
+            if (watchdogInterval) clearInterval(watchdogInterval);
+            
+            watchdogInterval = setInterval(() => {
+                const now = Date.now();
+                // タイムアウト時間を超えて通信がない場合
+                if (now - lastMessageTime > WATCHDOG_TIMEOUT) {
+                    console.warn('Watchdog timeout! Reconnecting...');
+                    addLog('通信タイムアウト（60秒）。再接続します。', 'error');
+                    setConnectionStatus(false);
+                    connectWebSocket(); // 強制再接続
+                }
+            }, WATCHDOG_CHECK_RATE);
         }
 
         function setConnectionStatus(isConnected) {
@@ -376,8 +409,9 @@
                 els.statusIndicator.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]';
             } else {
                 els.status.textContent = 'OFFLINE';
-                els.status.className = 'text-xs font-bold text-red-500 tracking-wide';
-                els.statusIndicator.className = 'w-2 h-2 rounded-full bg-red-500 animate-pulse';
+                els.status.className = 'text-xs font-bold text-red-500 tracking-wide animate-pulse'; // 文字も点滅させる
+                // インジケーターを激しく点滅させる
+                els.statusIndicator.className = 'w-2 h-2 rounded-full bg-red-600 animate-ping'; 
             }
         }
 
@@ -392,8 +426,6 @@
             
             if (!isCancel) {
                 // キャンセルでない場合
-                
-                // 1. デザインリセット（キャンセル状態からの復帰など）
                 els.mainPanel.classList.add('alert-active-border');
                 els.body.classList.add('alert-mode-bg');
                 els.alertHeaderBg.className = 'bg-red-600 px-6 py-4 flex justify-between items-center transition-colors duration-500';
@@ -401,7 +433,6 @@
                 els.bgDecoration.classList.add('bg-red-500/10');
                 els.intensityPulse.classList.remove('hidden');
 
-                // 2. データ反映
                 els.alertTitle.textContent = data.Title || '緊急地震速報';
                 els.alertSerial.textContent = `# ${data.Serial || '-'}`;
                 els.epicenter.textContent = data.Hypocenter || '---';
@@ -409,54 +440,45 @@
                 els.depth.textContent = (data.Depth || '-').replace('km', '');
                 els.originTime.textContent = (data.AnnouncedTime || '').split('T')[1]?.split('+')[0] || '--:--:--';
                 
-                // 3. 最終報の処理
                 if (isFinal) {
                     els.isFinalBadge.classList.remove('hidden');
-                    // 最終報はバッジを強調
                     els.isFinalBadge.className = 'px-2 py-1 bg-pink-600/30 text-pink-200 text-xs rounded border border-pink-500/50 font-bold shadow-[0_0_15px_rgba(236,72,153,0.4)] animate-pulse';
                 } else {
                     els.isFinalBadge.classList.add('hidden');
                 }
 
-                // 4. 震度スタイル更新
                 updateIntensityStyle(data.MaxIntensity);
                 
-                // 5. マップ更新
                 if (data.Latitude && data.Longitude) {
                     updateMap(data.Latitude, data.Longitude, data.Hypocenter);
                 }
 
-                // 6. ログ & 音声
                 const statusLabel = isFinal ? '[最終報]' : `[第${data.Serial}報]`;
                 const logType = isFinal ? 'alert-final' : 'alert';
                 const logMsg = `${statusLabel} ${data.Hypocenter} 最大震度${data.MaxIntensity}`;
                 
                 addLog(logMsg, logType);
                 
-                // 音声文言
                 const speakIntro = isFinal ? "緊急地震速報、最終報。" : "緊急地震速報。";
                 speak(`${speakIntro}${data.Hypocenter}で地震。最大震度${data.MaxIntensity}。マグニチュード${data.Magitude}。`);
 
             } else {
-                // キャンセル報の場合
                 renderCancel(data.Serial);
             }
         }
 
         function renderCancel(serial) {
-            // 1. スタイルを沈静化（グレー）に
             els.mainPanel.classList.remove('alert-active-border');
             els.body.classList.remove('alert-mode-bg');
             
             els.alertHeaderBg.className = 'bg-slate-600 px-6 py-4 flex justify-between items-center transition-colors duration-500';
             els.alertTitle.textContent = '緊急地震速報（取消）';
             
-            // 2. 詳細情報のクリア・リセット
             els.maxIntensity.className = 'text-8xl font-black bg-slate-700 text-gray-500 w-48 h-48 flex items-center justify-center rounded-3xl relative transition-all duration-300';
             els.maxIntensity.textContent = '-';
             
-            els.intensityPulse.classList.add('hidden'); // パルス停止
-            els.bgDecoration.classList.remove('bg-red-500/10'); // 背景赤削除
+            els.intensityPulse.classList.add('hidden');
+            els.bgDecoration.classList.remove('bg-red-500/10');
             els.bgDecoration.classList.add('bg-gray-500/10');
             
             els.epicenter.textContent = '情報は取り消されました';
@@ -466,13 +488,11 @@
             
             els.isFinalBadge.classList.add('hidden');
 
-            // 3. マップのマーカー消去
             if (earthquakeMarker) {
                 map.removeLayer(earthquakeMarker);
                 earthquakeMarker = null;
             }
 
-            // 4. ログ & 音声
             addLog(`[第${serial}報] この緊急地震速報は取り消されました`, 'cancel');
             speak("先ほどの緊急地震速報は取り消されました。");
         }
@@ -498,7 +518,6 @@
         function updateMap(lat, lon, text) {
             if (earthquakeMarker) map.removeLayer(earthquakeMarker);
 
-            // アニメーションアイコン
             const rippleIcon = L.divIcon({
                 className: 'custom-div-icon',
                 html: `<div style="position:relative; width:60px; height:60px; left:-30px; top:-30px;">
@@ -533,16 +552,16 @@
             
             let colorClass = 'text-gray-300';
             if (type === 'alert') colorClass = 'text-red-400 font-bold';
-            if (type === 'alert-final') colorClass = 'text-pink-400 font-black'; // 最終報用
+            if (type === 'alert-final') colorClass = 'text-pink-400 font-black';
             if (type === 'success') colorClass = 'text-emerald-400';
-            if (type === 'error') colorClass = 'text-rose-400';
-            if (type === 'cancel') colorClass = 'text-gray-400 italic'; // 取消報用
+            if (type === 'error') colorClass = 'text-rose-400 font-bold'; // エラーを強調
+            if (type === 'cancel') colorClass = 'text-gray-400 italic';
             if (type === 'system') colorClass = 'text-blue-300';
 
             div.className = "flex items-start gap-3 p-2 rounded hover:bg-white/5 transition-colors text-xs font-mono border-l-2 border-transparent hover:border-white/20";
             
-            // 最終報は背景少しつける
             if (type === 'alert-final') div.classList.add('bg-pink-500/10');
+            if (type === 'error') div.classList.add('bg-red-500/10'); // エラー背景追加
 
             div.innerHTML = `
                 <span class="opacity-40 shrink-0 select-none">${time}</span>
@@ -618,7 +637,6 @@
             };
 
             if (testState === 1) {
-                // 第1報
                 handleEEW({
                     ...baseData,
                     Title: '緊急地震速報（予報）',
@@ -630,7 +648,6 @@
                     isCancel: false
                 });
             } else if (testState === 2) {
-                // 最終報
                 handleEEW({
                     ...baseData,
                     Title: '緊急地震速報（予報）',
@@ -642,7 +659,6 @@
                     isCancel: false
                 });
             } else if (testState === 3) {
-                // 取消報
                 handleEEW({
                     ...baseData,
                     Serial: '6',
