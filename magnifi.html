@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="icon" href="icons/logo-earth.png">
+    <link rel="apple-touch-icon" href="icons/earth.png">
+    <link rel="manifest" href="manifest/manifest2.json">
 
     <script>
         tailwind.config = {
@@ -55,8 +58,17 @@
                 radial-gradient(circle at 10% 20%, rgba(30, 41, 59, 0.5) 0%, transparent 20%),
                 radial-gradient(circle at 90% 80%, rgba(15, 23, 42, 0.5) 0%, transparent 20%);
             color: #ffffff;
-            height: 100vh;
-            overflow: hidden;
+            /* モバイル向け: 最小高さを確保し、スクロールを許可 */
+            min-height: 100vh;
+            overflow-y: auto; 
+        }
+
+        /* デスクトップ向け: 全画面固定レイアウト */
+        @media (min-width: 1024px) {
+            body {
+                height: 100vh;
+                overflow: hidden;
+            }
         }
 
         /* グラスモーフィズムパネル共通 */
@@ -151,9 +163,9 @@
     <main class="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 min-h-0">
         
         <!-- 左カラム：メイン情報パネル (lg:col-span-7) -->
-        <div class="lg:col-span-7 flex flex-col gap-4 min-h-0">
+        <div class="lg:col-span-7 flex flex-col gap-4 min-h-0 shrink-0">
             <!-- アラート表示エリア (常に表示、待機時はStandbyモード) -->
-            <div id="main-panel" class="glass-panel rounded-3xl flex-grow flex flex-col relative overflow-hidden transition-all duration-300">
+            <div id="main-panel" class="glass-panel rounded-3xl flex-grow flex flex-col relative overflow-hidden transition-all duration-300 h-96 lg:h-auto">
                 
                 <!-- 待機画面 -->
                 <div id="standby-view" class="absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-500">
@@ -233,14 +245,16 @@
         <!-- 右カラム：地図 & ログ (lg:col-span-5) -->
         <div class="lg:col-span-5 flex flex-col gap-4 min-h-0">
             
-            <!-- マップカード (高さ固定または可変) -->
-            <div class="glass-panel rounded-3xl p-1 h-[400px] lg:h-auto lg:flex-grow flex flex-col">
+            <!-- マップカード -->
+            <!-- モバイル時は固定高さ(h-80)を確保し shrink-0 で潰れを防止 -->
+            <div class="glass-panel rounded-3xl p-1 h-80 md:h-[400px] lg:h-auto lg:flex-grow flex flex-col shrink-0">
                 <div id="map-container">
                     <div id="map"></div>
                 </div>
             </div>
 
             <!-- ログカード -->
+            <!-- モバイル時も高さを維持 -->
             <div class="glass-panel rounded-3xl flex flex-col h-64 lg:h-72 overflow-hidden shrink-0">
                 <div class="bg-slate-900/50 px-5 py-3 border-b border-white/5 flex justify-between items-center shrink-0">
                     <div class="flex items-center gap-2">
